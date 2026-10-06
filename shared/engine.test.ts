@@ -35,17 +35,21 @@ const act = (g: GameState, p: PIdx, a: any) => { const r = applyAction(g, p, a);
   assert.equal(g.players[1].wins, 1);
   console.log('round flow ok', g.results);
 }
+// Any unit can go in either row; new cards behave
 {
-  const g = setup('EMBER', 'ECHO', ['vorok', 'pyre-hound'], ['patchwork', 'static-runner']);
-  act(g, 0, { type: 'play', uid: 'a1', row: 'F' });
-  act(g, 1, { type: 'play', uid: 'b0', row: 'F' });
-  act(g, 0, { type: 'pass' });
-  act(g, 1, { type: 'pass' }); // round 1 ends 7 vs 6 -> p0 wins (first light)
-  assert.equal(g.results[0].winner, 0);
-  assert.equal(g.current, 0);
-  // round 2: p1 plays then passes; p0 Vorok Resolve
-  g.players[1].hand.push({ uid: 'b9', cardId: 'lancer' });
-  act(g, 0, { type: 'play', uid: g.players[0].hand.find(c => c.cardId === 'pyre-hound')?.uid ?? 'x', row: 'F' }).length;
+  const g = setup('EMBER', 'COVEN', ['gorehorn', 'pyre-hound', 'ember-whelp'], ['grandmother-rot', 'thornling', 'hollow-bloom']);
+  act(g, 0, { type: 'play', uid: 'a1', row: 'B' }); // Pyre Hound (printed Front) into Back
+  assert.equal(g.players[0].units[0].row, 'B');
+  act(g, 1, { type: 'play', uid: 'b1', row: 'F' });
+  act(g, 0, { type: 'play', uid: 'a2', row: 'B' }); // whelp B, spark F
+  assert.ok(g.players[0].units.some(u => u.token && u.name === 'Spark' && u.row === 'F'));
+  act(g, 1, { type: 'play', uid: 'b0', row: 'B', targetRow: 'B' }); // rot poisons whelp(2) + hound(6? no, >4)
+  const whelp = g.players[0].units.find(u => u.cardId === 'ember-whelp');
+  assert.ok(!whelp || whelp.poison || whelp.power < 2);
+  assert.equal(g.players[0].units.find(u => u.cardId === 'pyre-hound')!.poison, false);
+  act(g, 0, { type: 'play', uid: 'a0', row: 'F' }); // gorehorn hits spark in front
+  assert.ok(!g.players[0].units.some(u => u.name === 'Spark'));
+  console.log('rows + expansion ok');
 }
 // Duel: Aiden (Resolve) 9 vs Skarr 12 -> Skarr dies, Aiden ends at 6
 {

@@ -56,8 +56,8 @@ export function MiniUnit({
         <img className="abs unit-p" src={particleSrc(u.cardId, u.house)} alt="" />
         {u.token ? (
           <div className="token-face">
-            <div style={{ opacity: 0.35 }}><Sigil house="ECHO" size={46} stroke={3} color={H.accent} /></div>
-            <span className="mono" style={{ color: H.accent }}>ECHO</span>
+            <div style={{ opacity: 0.35 }}><Sigil house={u.house} size={46} stroke={3} color={H.accent} /></div>
+            <span className="mono" style={{ color: H.accent }}>{u.name.toUpperCase()}</span>
           </div>
         ) : art ? (
           <img className="abs unit-art" src={artSrc(u.cardId!)} alt={u.name}

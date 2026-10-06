@@ -7,7 +7,7 @@ An online two-player card duel in the Gwent style. You play one card a turn or p
 
 ## Put it online (no coding needed)
 
-The game is one Node.js app that serves both the website and the live match server. The steps below use Render's free plan.
+The game is one Node.js app that serves both the website and the live match server. The steps below use Render's free plan; Railway works too (`railway up` from this folder).
 
 1. **Make a GitHub account** at github.com if you don't have one.
 2. **Create a new repository** called `afterlight`. Set it to Private if you like.
@@ -59,3 +59,13 @@ Other commands:
 The server holds the real game state and checks every move, so players can't cheat by editing the page. Opponents never receive your hand.
 
 To give a common card art, add `client/public/art/<card-id>.webp` plus `-e0` and `-e1` afterimage versions, then add a layout entry in `client/src/art.ts`.
+
+## Card art for the new Legends
+
+Eight Legends have no art yet: Grandmother Rot, Hollow Bloom, Captain Ilse, Brother Aurel, Matron Cinder, Gorehorn, Mirrorjack and Lattice. For each one:
+
+1. Drop `client/public/art/<card-id>.webp` into the folder. Use a transparent-background, full-body figure, about 800×1200.
+2. Add `<card-id>-e0.webp` and `<card-id>-e1.webp`, the two tinted afterimage copies.
+3. Add a line for it in `client/src/art.ts`.
+
+Card ids are listed in `shared/cards.ts`.

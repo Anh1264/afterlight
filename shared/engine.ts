@@ -179,20 +179,20 @@ function gain(u: Unit, n: number, src: 'grow' | 'rally' | 'boost' | 'sacrifice',
   ev.push({ t: 'boost', uid: u.uid, n, src, power: u.power });
 }
 
-function makeUnit(g: GameState, p: PIdx, def: CardDef | null, row: Row, opts: { uid?: string; power?: number; house?: House } = {}): Unit {
+function makeUnit(g: GameState, p: PIdx, def: CardDef | null, row: Row, opts: { uid?: string; power?: number; house?: House; name?: string } = {}): Unit {
   const power = opts.power ?? def?.power ?? 0;
   return {
-    uid: opts.uid ?? id(g, 't'), cardId: def?.id ?? null, name: def?.name ?? 'Echo', owner: p,
+    uid: opts.uid ?? id(g, 't'), cardId: def?.id ?? null, name: def?.name ?? opts.name ?? 'Echo', owner: p,
     house: def?.house ?? opts.house ?? g.players[p].house, power, base: power, row,
     grow: !!def?.grow, guard: !!def?.guard, shield: !!def?.shield, poison: false,
     token: !def, silenced: false,
   };
 }
 
-function summonToken(g: GameState, p: PIdx, row: Row, power: number, ev: GEvent[]) {
+function summonToken(g: GameState, p: PIdx, row: Row, power: number, ev: GEvent[], name = 'Echo') {
   const pl = g.players[p];
   if (rowUnits(pl, row).length >= RULES.ROW_MAX) return;
-  const t = makeUnit(g, p, null, row, { power });
+  const t = makeUnit(g, p, null, row, { power, name });
   pl.units.push(t);
   ev.push({ t: 'summon', p, unit: { ...t } });
 }
@@ -237,6 +237,12 @@ export function targetSpecFor(g: BoardLike, p: PIdx, eff: EffId | undefined): Ta
     case 'duel': return enemy(() => true, 1, 'Duel an enemy unit');
     case 'duel3': return enemy(() => true, 1, 'Aiden gains +3, then Duels an enemy unit');
     case 'givegrow': return ally(u => !u.grow, 1, 1, 'Give an allied unit Grow');
+    case 'toad': return enemy(u => u.poison, 1, 'A Poisoned enemy unit loses 3');
+    case 'aurel': return ally(u => !u.shield, 1, 2, 'Give Shield to up to 2 allied units', );
+    case 'burn2x2': return enemy(() => true, 2, 'Burn 2: choose up to 2 enemy units', 1);
+    case 'mirror': return enemy(() => true, 1, 'Copy the power of an enemy unit');
+    case 'rotrow':
+      return opp.units.length ? { kind: 'row', side: 'enemy', prompt: 'Choose an enemy row: Poison every unit there with 4 or less power' } : { kind: 'none' };
     case 'chaplain': return ally(() => true, 1, 1, 'Give an allied unit Shield and +1');
     case 'cultist': return ally(u => u.power <= 3, 0, 1, 'You may Sacrifice a unit with 3 or less power');
     case 'skarr': return ally(u => u.power <= 3, 0, 2, 'Sacrifice up to 2 units with 3 or less power');
@@ -258,7 +264,8 @@ export function targetSpecFor(g: BoardLike, p: PIdx, eff: EffId | undefined): Ta
 
 export function legalRows(g: BoardLike, p: PIdx, def: CardDef): Row[] {
   if (def.kind !== 'unit') return [];
-  const rows: Row[] = def.rows === 'E' ? ['F', 'B'] : [def.rows as Row];
+  // every unit may be placed in either row; the choice matters through Guard, Rally, Echo and row-wide effects
+  const rows: Row[] = ['F', 'B'];
   return rows.filter(r => rowUnits(g.players[p] as PlayerState, r).length < RULES.ROW_MAX);
 }
 
@@ -308,6 +315,30 @@ function applyEffect(g: GameState, p: PIdx, eff: EffId | undefined, self: Unit |
       for (const u of hit) if (!u.poison) { u.poison = true; ev.push({ t: 'status', uid: u.uid, s: 'poison' }); }
       break;
     }
+    case 'rotrow':
+      for (const u of rowUnits(opp, a.targetRow as Row)) if (u.power <= 4 && !u.poison) { u.poison = true; ev.push({ t: 'status', uid: u.uid, s: 'poison' }); }
+      break;
+    case 'bloom':
+      for (const u of me.units) if (u !== self && u.grow) gain(u, 2, 'boost', ev);
+      break;
+    case 'toad': if (ts[0]) lose(g, ts[0], 3, 'lose', ev); break;
+    case 'aurel':
+      for (const t of ts) { const u = get(t); if (u) { u.shield = true; ev.push({ t: 'status', uid: t, s: 'shield' }); } }
+      break;
+    case 'shieldfront':
+      for (const u of rowUnits(me, 'F')) if (!u.shield) { u.shield = true; ev.push({ t: 'status', uid: u.uid, s: 'shield' }); }
+      break;
+    case 'burn2x2': for (const t of ts) lose(g, t, 2, 'burn', ev); break;
+    case 'gorehorn':
+      if (self) for (const u of rowUnits(me, self.row)) if (u !== self) lose(g, u.uid, 2, 'self', ev);
+      break;
+    case 'mirror': {
+      const u = get(ts[0]);
+      if (u && self && u.power > self.power) gain(self, u.power - self.power, 'boost', ev);
+      break;
+    }
+    case 'lattice': for (const u of me.units) if (u.token) gain(u, 2, 'boost', ev); break;
+    case 'echo4': if (self) summonToken(g, p, otherRow(self.row), 4, ev); break;
     case 'vespera':
       for (const u of opp.units.slice()) if (u.poison) lose(g, u.uid, 2, 'lose', ev);
       break;
@@ -418,7 +449,7 @@ export function doPlay(g: GameState, p: PIdx, a: Extract<Action, { type: 'play' 
     self = makeUnit(g, p, def, row, { uid: inst.uid });
     me.units.push(self);
     if (def.rally) for (const v of rowUnits(me, row)) if (v !== self) gain(v, def.rally, 'rally', ev);
-    if (def.echo) summonToken(g, p, otherRow(row), def.echo, ev);
+    if (def.echo) summonToken(g, p, otherRow(row), def.echo, ev, def.token ?? 'Echo');
   } else {
     me.discard.push(inst);
   }

@@ -5,6 +5,7 @@ import { createRoom, joinRoom, socket, store } from './net';
 import { Game } from './components/Game';
 import { Home, Join, Lobby } from './components/Screens';
 import { Stage } from './components/Stage';
+import { Gallery } from './components/Gallery';
 import { preloadArt } from './art';
 
 const codeFromPath = () => (location.pathname.match(/^\/r\/([A-Z0-9]{4,8})/i)?.[1] ?? '').toUpperCase();
@@ -13,6 +14,7 @@ export default function App() {
   const director = useMemo(() => new Director(), []);
   const ds = useSyncExternalStore(director.subscribe, director.get);
   const [code, setCode] = useState(codeFromPath);
+  const [gallery, setGallery] = useState(() => location.pathname === '/cards');
   const [room, setRoom] = useState<RoomSnapshot | null>(null);
   const [name, setNameS] = useState(store.name());
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +43,7 @@ export default function App() {
     };
     rejoin();
     socket.on('connect', rejoin);
-    const onPop = () => { setCode(codeFromPath()); setRoom(null); director.reset(); rejoin(); };
+    const onPop = () => { setGallery(location.pathname === '/cards'); setCode(codeFromPath()); setRoom(null); director.reset(); rejoin(); };
     window.addEventListener('popstate', onPop);
     return () => { socket.off('connect', rejoin); window.removeEventListener('popstate', onPop); };
   }, [director]);
@@ -61,11 +63,14 @@ export default function App() {
   };
   const home = () => { socket.emit('room:leave'); director.reset(); setRoom(null); go(''); };
 
+  const openGallery = () => { history.pushState(null, '', '/cards'); setGallery(true); };
+  const closeGallery = () => { history.back(); };
   let screen: React.ReactNode;
-  if (!code) screen = <Home name={name} setName={setName} onBot={() => start(true)} onCreate={() => start(false)} busy={busy} error={error} />;
+  if (gallery) screen = <Gallery onBack={() => { if (history.length > 1) closeGallery(); else { history.replaceState(null, '', '/'); setGallery(false); } }} />;
+  else if (!code) screen = <Home name={name} setName={setName} onBot={() => start(true)} onCreate={() => start(false)} onCards={openGallery} busy={busy} error={error} />;
   else if (!room && store.token(code) && !error) screen = <div className="center-screen mono dim">RECONNECTING…</div>;
   else if (!room) screen = <Join code={code} name={name} setName={setName} onJoin={join} error={error} busy={busy} />;
-  else if (room.phase === 'lobby') screen = <Lobby room={room} onLeave={home} />;
+  else if (room.phase === 'lobby') screen = <Lobby room={room} onLeave={home} onCards={openGallery} />;
   else if (ds.shown) screen = <Game room={room} director={director} onHome={home} />;
   else screen = <div className="center-screen mono dim">LOADING MATCH…</div>;
 

@@ -8,6 +8,8 @@ import type { RoomSnapshot } from '../../../shared/protocol';
 import type { Director } from '../director';
 import { socket } from '../net';
 import { CardFace, Sigil } from './Card';
+import { KeywordHelp, TokenCard } from './Help';
+import { Rules } from './Screens';
 import { housePSrc } from '../art';
 import { Banners, FxLayer } from './Fx';
 import { MiniUnit } from './Unit';
@@ -84,9 +86,10 @@ export function Game({ room, director, onHome }: { room: RoomSnapshot; director:
   const me = v.me, op = opp(me);
   const scale = useStageScale();
   const [sel, setSel] = useState<Sel | null>(null);
-  const [hover, setHover] = useState<{ cardId: string; power?: number } | null>(null);
+  const [hover, setHover] = useState<{ cardId: string | null; power?: number; unit?: Unit } | null>(null);
   const [sending, setSending] = useState(false);
   const [passArm, setPassArm] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const els = useRef(new Map<string, HTMLElement>());
@@ -146,6 +149,11 @@ export function Game({ room, director, onHome }: { room: RoomSnapshot; director:
   };
   const advanceSel = (s: Sel) => { const n = nextStep(s); if (n) setSel(n); else fire(s); };
 
+  const dragged = useRef(false);
+  const dropOnRow = (uid: string, cardId: string, row: Row) => {
+    if (!myTurn || !legalRows(v, me, CARDS[cardId]).includes(row)) return;
+    advanceSel({ uid, cardId, step: 'row', row, targets: [], spec: specFor(cardId) });
+  };
   const pickCard = (uid: string, cardId: string) => {
     if (!myTurn) return;
     if (sel?.uid === uid) {
@@ -189,8 +197,8 @@ export function Game({ room, director, onHome }: { room: RoomSnapshot; director:
   else if (ds.busy || sending) prompt = '';
   else if (v.players[me].passed) prompt = `You passed. ${v.players[op].name} is playing out the round.`;
   else if (v.current !== me) prompt = `${v.players[op].name} is thinking…`;
-  else if (!sel) prompt = oppPassed ? (myTotal > opTotal ? 'You’re ahead and they passed. Pass to take the round, or keep building.' : 'They passed. Every card you play now triggers Resolve.') : 'Your turn. Click a card to play it, or pass.';
-  else if (sel.step === 'row') prompt = `Choose a row for ${CARDS[sel.cardId].name}`;
+  else if (!sel) prompt = oppPassed ? (myTotal > opTotal ? 'You’re ahead and they passed. Pass to take the round, or keep building.' : 'They passed. Every card you play now triggers Resolve.') : 'Your turn. Drag a card onto a row (or click it), or pass.';
+  else if (sel.step === 'row') prompt = `Click Front or Back to place ${CARDS[sel.cardId].name}`;
   else if (sel.step === 'mode') prompt = `${CARDS[sel.cardId].name}: choose one`;
   else if (sel.step === 'targets' && unitSpec) prompt = `${unitSpec.prompt}${unitSpec.max > 1 ? ` (${sel.targets.length}/${unitSpec.max})` : ''}`;
   else if (sel.step === 'targetRow' && activeSpec?.kind === 'row') prompt = activeSpec.prompt;
@@ -209,7 +217,7 @@ export function Game({ room, director, onHome }: { room: RoomSnapshot; director:
     const guarded = p === op && row === 'B' && unitSpec?.side === 'enemy' && targetable(pl).length !== pl.units.length;
     const isMine = p === me;
     return (
-      <div key={`${p}${row}`} ref={el => { if (el) rowEls.current.set(`${p}${row}`, el); }}
+      <div key={`${p}${row}`} data-p={p} data-row={row} ref={el => { if (el) rowEls.current.set(`${p}${row}`, el); }}
         className={`row${placing ? ' placing' : ''}${rowTarget ? ' row-target' : ''}`}
         style={{ background: H.paper, borderColor: placing || rowTarget ? (rowTarget ? '#C21F33' : meH.accent) : H.frame, ['--acc' as string]: H.accent }}
         onClick={() => clickRow(p, row)}>
@@ -228,10 +236,10 @@ export function Game({ room, director, onHome }: { room: RoomSnapshot; director:
                 glow={inPool ? (unitSpec!.side === 'enemy' ? 'enemy' : 'ally') : null}
                 picked={!!sel?.targets.includes(u.uid)}
                 onClick={inPool ? () => clickUnit(u) : undefined}
-                onHover={x => setHover(x ? (x.cardId ? { cardId: x.cardId, power: x.power } : null) : null)} />;
+                onHover={x => setHover(x ? { cardId: x.cardId, power: x.power, unit: x } : null)} />;
             })}
           </AnimatePresence>
-          {placing && <motion.div className="slot-ghost" style={{ borderColor: meH.accent }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>{isMine ? 'PLACE HERE' : ''}</motion.div>}
+          {placing && <motion.div className="slot-ghost" style={{ borderColor: meH.accent }} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>{isMine ? (row === 'F' ? 'PLACE IN FRONT' : 'PLACE IN BACK') : ''}</motion.div>}
         </div>
       </div>
     );
@@ -291,8 +299,9 @@ export function Game({ room, director, onHome }: { room: RoomSnapshot; director:
         <div className="inspect">
           <AnimatePresence mode="wait">
             {inspect ? (
-              <motion.div key={inspect.cardId + (inspect.power ?? '')} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
-                <CardFace cardId={inspect.cardId} scale={0.56} power={inspect.power} />
+              <motion.div key={(inspect.cardId ?? inspect.unit?.uid) + String(inspect.power ?? '')} className="inspect-body" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+                {inspect.cardId ? <CardFace cardId={inspect.cardId} scale={0.44} power={inspect.power} /> : <TokenCard u={inspect.unit!} />}
+                <KeywordHelp cardId={inspect.cardId} unit={inspect.unit} />
               </motion.div>
             ) : (
               <motion.div key="hint" className="inspect-hint" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
@@ -338,7 +347,16 @@ export function Game({ room, director, onHome }: { room: RoomSnapshot; director:
                 transition={{ type: 'spring', stiffness: 300, damping: 28 }}
                 onMouseEnter={() => setHover({ cardId: c.cardId })}
                 onMouseLeave={() => setHover(null)}
-                onClick={() => pickCard(c.uid, c.cardId)}>
+                onClick={() => { if (!dragged.current) pickCard(c.uid, c.cardId); }}
+                drag={myTurn && CARDS[c.cardId].kind === 'unit'} dragSnapToOrigin dragElastic={1} dragMomentum={false}
+                onDragStart={() => { dragged.current = true; setSel(null); }}
+                onDragEnd={(_e, info) => {
+                  setTimeout(() => { dragged.current = false; }, 50);
+                  const hit = document.elementsFromPoint(info.point.x - window.scrollX, info.point.y - window.scrollY)
+                    .map(el => (el as HTMLElement).closest?.('[data-row]') as HTMLElement | null).find(Boolean);
+                  if (!hit || Number(hit.dataset.p) !== me) return;
+                  dropOnRow(c.uid, c.cardId, hit.dataset.row as Row);
+                }}>
                 <CardFace cardId={c.cardId} scale={0.3} />
                 {CARDS[c.cardId].resolve && oppPassed && <span className="resolve-tag">RESOLVE</span>}
               </motion.div>
@@ -355,7 +373,10 @@ export function Game({ room, director, onHome }: { room: RoomSnapshot; director:
             if (!passArm) { setPassArm(true); setTimeout(() => setPassArm(false), 2500); return; }
             send({ type: 'pass' });
           }}>{passLabel}</button>
-        <button className="btn tiny ghost" onClick={() => { if (confirm('Forfeit this match?')) socket.emit('game:forfeit'); }}>Forfeit</button>
+        <div className="action-links">
+          <button className="btn tiny ghost" onClick={() => setRulesOpen(true)}>Rules &amp; keywords</button>
+          <button className="btn tiny ghost" onClick={() => { if (confirm('Forfeit this match?')) socket.emit('game:forfeit'); }}>Forfeit</button>
+        </div>
       </div>
 
       {/* reveal of a card being played */}
@@ -371,6 +392,7 @@ export function Game({ room, director, onHome }: { room: RoomSnapshot; director:
         )}
       </AnimatePresence>
 
+      <AnimatePresence>{rulesOpen && <Rules onClose={() => setRulesOpen(false)} />}</AnimatePresence>
       <FxLayer fx={ds.fx} />
       <Banners b={ds.banner} meHouse={v.players[me].house} oppHouse={v.players[op].house} me={me} />
 

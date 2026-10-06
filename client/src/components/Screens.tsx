@@ -1,12 +1,12 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
-import { ALL_HOUSES, CARDS, HOUSES, House, deckList } from '../../../shared/cards';
+import { ALL_HOUSES, CARDS, HOUSES, House, KEYWORDS, deckList } from '../../../shared/cards';
 import type { RoomSnapshot } from '../../../shared/protocol';
 import { socket } from '../net';
 import { CardBack, CardFace, Sigil } from './Card';
 
-export function Home({ name, setName, onBot, onCreate, busy, error }: {
-  name: string; setName: (n: string) => void; onBot: () => void; onCreate: () => void; busy: boolean; error: string | null;
+export function Home({ name, setName, onBot, onCreate, onCards, busy, error }: {
+  name: string; setName: (n: string) => void; onBot: () => void; onCreate: () => void; onCards: () => void; busy: boolean; error: string | null;
 }) {
   const [rules, setRules] = useState(false);
   const fan = ['mawroot', 'halden', 'aiden', 'vorok'];
@@ -25,7 +25,10 @@ export function Home({ name, setName, onBot, onCreate, busy, error }: {
           <button className="btn big" disabled={busy} onClick={onCreate}>Invite a friend</button>
         </div>
         {error && <span className="error">{error}</span>}
-        <button className="link" onClick={() => setRules(true)}>How to play →</button>
+        <div className="home-links">
+          <button className="link" onClick={() => setRules(true)}>How to play →</button>
+          <button className="link" onClick={onCards}>All cards →</button>
+        </div>
       </div>
       <div className="home-fan">
         {fan.map((id, i) => (
@@ -44,20 +47,7 @@ export function Home({ name, setName, onBot, onCreate, busy, error }: {
 }
 
 export function Rules({ onClose }: { onClose: () => void }) {
-  const kw: [string, string][] = [
-    ['Resolve', 'Fires only if your opponent has already passed. Each house’s finisher.'],
-    ['Deploy', 'Fires when the card is played.'],
-    ['Burn X', 'Deal X damage to a unit.'],
-    ['Poison', 'Loses 1 at the end of each of its controller’s turns.'],
-    ['Grow', 'Gains 1 at the end of each of your turns.'],
-    ['Shield', 'Blocks the next power loss, then breaks.'],
-    ['Guard', 'In your Front row: enemies can’t target your Back row.'],
-    ['Rally X', 'Other units in this row gain X.'],
-    ['Echo X', 'Summon an X-power token in your other row.'],
-    ['Sacrifice', 'Destroy one of your own units for an effect.'],
-    ['Duel', 'Two units trade hits, this one first, until one dies.'],
-    ['Silence', 'Removes Grow, Guard, Shield and Poison.'],
-  ];
+  const kw: [string, string][] = KEYWORDS.map(k => [k.kw, k.t]);
   return (
     <motion.div className="modal-bg" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
       <motion.div className="modal" initial={{ y: 30, scale: 0.96 }} animate={{ y: 0, scale: 1 }} exit={{ y: 20, opacity: 0 }} onClick={e => e.stopPropagation()}>
@@ -72,7 +62,7 @@ export function Rules({ onClose }: { onClose: () => void }) {
               <li>The board clears between rounds. Cards you spent are gone, so don’t overspend to win Round 1.</li>
               <li>The first player gets <b>First Light</b>: +1 to their Round 1 total.</li>
             </ol>
-            <p className="dim">Each side has a <b>Front</b> and a <b>Back</b> row, 6 units each. Cards say which row they go in.</p>
+            <p className="dim">Each side has a <b>Front</b> and a <b>Back</b> row, 6 units each. Any unit can go in either row: drag it there, or click the card and then the row. Placement matters for Guard, Rally, Echo and effects that hit a whole row.</p>
           </div>
           <div>
             <span className="mono dim">KEYWORDS</span>
@@ -102,7 +92,7 @@ export function Join({ code, name, setName, onJoin, error, busy }: { code: strin
   );
 }
 
-export function Lobby({ room, onLeave }: { room: RoomSnapshot; onLeave: () => void }) {
+export function Lobby({ room, onLeave, onCards }: { room: RoomSnapshot; onLeave: () => void; onCards: () => void }) {
   const me = room.seats[room.you]!;
   const op = room.seats[room.you === 0 ? 1 : 0];
   const [copied, setCopied] = useState(false);
@@ -147,11 +137,11 @@ export function Lobby({ room, onLeave }: { room: RoomSnapshot; onLeave: () => vo
       </div>
       <div className="lobby-bottom">
         <div className="legends">
-          {shownHouse ? deckList(shownHouse).slice(0, 3).map(id => (
-            <motion.div key={id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CardFace cardId={id} scale={0.3} /></motion.div>
+          {shownHouse ? deckList(shownHouse).slice(0, 5).map(id => (
+            <motion.div key={id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CardFace cardId={id} scale={0.25} /></motion.div>
           )) : <span className="mono dim legends-hint">HOVER A HOUSE TO SEE ITS LEGENDS</span>}
           {shownHouse && <div className="deck-list">
-            <span className="mono dim">DECK · 18 CARDS</span>
+            <span className="mono dim">DECK · {deckList(shownHouse).length} CARDS</span>
             {[...new Set(deckList(shownHouse))].map(id => (
               <div key={id}><span>{CARDS[id].name}</span><span className="mono dim">{CARDS[id].tier === 'LEGEND' ? '×1' : '×3'} · {CARDS[id].kind === 'unit' ? CARDS[id].power : 'SP'}</span></div>
             ))}
@@ -165,6 +155,7 @@ export function Lobby({ room, onLeave }: { room: RoomSnapshot; onLeave: () => vo
             <button className={`btn big ${me.ready ? '' : 'dark'}`} disabled={!me.house} onClick={() => socket.emit('lobby:ready', !me.ready)}>
               {!me.house ? 'Pick a house' : me.ready ? (room.vsBot ? 'Starting…' : 'Not ready') : room.vsBot ? 'Start match' : 'Ready'}
             </button>
+            <button className="btn ghost" onClick={onCards}>All cards</button>
             <button className="btn ghost" onClick={onLeave}>Leave</button>
           </div>
         </div>

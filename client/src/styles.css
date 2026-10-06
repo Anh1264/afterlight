@@ -261,3 +261,46 @@ button { font: inherit; color: inherit; }
 .banner-turn { top: 270px; }
 .banner-turn .banner-title { font-size: 72px; color: var(--me); }
 .prompt > span { background: rgba(255,255,255,.94); padding: 6px 16px; border-radius: 999px; box-shadow: 0 6px 18px rgba(20,20,40,.1); border: 1px solid var(--line); }
+.inspect { height: auto; min-height: 400px; align-items: flex-start; }
+.inspect > div { filter: none; }
+.inspect-body { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.inspect-body .card-wrap { filter: drop-shadow(0 14px 24px rgba(0,0,0,.14)); }
+.kw-help { width: 270px; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; line-height: 1.38; color: var(--ink2); }
+.kw-help p { margin: 0; }
+.kw-help b { color: var(--ink); }
+.kw-status b { color: var(--red); }
+.kw-none { color: var(--dim); }
+.token-card { width: 220px; height: 308px; border: 2px dashed; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+.token-card strong { font-size: 28px; }
+.inspect { max-height: 540px; overflow: hidden; }
+/* gallery */
+.gallery { position: absolute; inset: 0; display: flex; }
+.gal-side { width: 340px; flex: none; padding: 40px 28px 30px 48px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; border-right: 1px solid var(--line); }
+.gal-title { margin: 0; font-stretch: 62%; font-weight: 900; font-size: 72px; line-height: .85; }
+.gal-sub { margin: 0; font-size: 14px; line-height: 1.45; }
+.gal-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.gal-tab { display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid var(--line); background: #fff; border-radius: 999px; padding: 6px 12px; font-weight: 700; font-size: 13px; cursor: pointer; }
+.gal-tab.on { border-color: var(--acc, var(--ink)); box-shadow: 0 0 0 2px color-mix(in srgb, var(--acc, #0E0E12) 25%, transparent); }
+.gal-kw { display: flex; flex-direction: column; gap: 7px; font-size: 12.5px; line-height: 1.38; color: var(--ink2); margin-top: 6px; }
+.gal-kw p { margin: 0; }
+.gal-kw b { color: var(--ink); }
+.gal-main { flex: 1; overflow-y: auto; padding: 36px 40px 60px; display: flex; flex-direction: column; gap: 44px; }
+.gal-head { display: flex; align-items: center; gap: 16px; padding-bottom: 14px; border-bottom: 1.5px solid; margin-bottom: 18px; }
+.gal-head h2 { margin: 2px 0 0; font-stretch: 62%; font-weight: 900; font-size: 44px; line-height: .9; }
+.gal-head p { margin: 0 0 0 auto; width: 460px; font-size: 14px; line-height: 1.45; color: var(--ink2); }
+.gal-grid { display: grid; grid-template-columns: repeat(6, 180px); gap: 22px 18px; }
+.gal-card { border: 0; background: none; padding: 0; cursor: zoom-in; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.gal-card .card-wrap { filter: drop-shadow(0 10px 16px rgba(20,20,40,.12)); }
+.gal-cap { font-size: 9.5px; color: var(--dim); }
+.gal-zoom { display: flex; gap: 36px; background: #fff; border-radius: 24px; padding: 30px; box-shadow: 0 40px 80px rgba(0,0,0,.25); transform-origin: center; }
+.gal-zoom .card-wrap { transform: scale(.98); }
+.gal-zoom-text { width: 340px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.gal-zoom-text h2 { margin: 0; font-size: 44px; font-stretch: 75%; font-weight: 900; }
+.gal-zoom-text .kw-help { width: 100%; font-size: 15px; gap: 10px; }
+
+.home-links { display: flex; gap: 28px; }
+.legends { width: 920px; gap: 10px; }
+.kw-grid { gap: 7px; font-size: 13.5px; }
+.kw-grid div { grid-template-columns: 100px 1fr; }
+.modal { max-height: 860px; overflow-y: auto; }
+.action-links { display: flex; justify-content: center; gap: 4px; }
