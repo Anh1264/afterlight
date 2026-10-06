@@ -97,6 +97,8 @@ function FxItem({ f }: { f: Fx }) {
       body = <><Ring color="#0B7F8E" w={4} to={2.2} /><Particles n={16} colors={['#0B7F8E', '#7FD3DC', '#FFFFFF']} spread={80} shape="square" /><Label text="SEIZED" color="#0B7F8E" /></>; break;
     case 'move':
       body = <><Ring color="#0B7F8E" w={2} /><Label text="SHOVED" color="#0B7F8E" /></>; break;
+    case 'lastwords':
+      body = <><Ring color="#6A6470" w={2} from={1.4} to={0.6} dur={0.5} /><Label text="LAST WORDS" color="#3A3A44" /></>; break;
     case 'land':
       body = <><Ring color={acc} w={2} from={0.6} to={1.5} dur={0.45} /><Particles n={8} colors={[acc, '#FFFFFF']} spread={60} size={[3, 6]} dur={[0.3, 0.5]} /></>; break;
   }

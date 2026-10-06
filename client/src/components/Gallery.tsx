@@ -1,26 +1,27 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
-import { ALL_HOUSES, CARDS, COMMONS, HOUSES, House, KEYWORDS, LEGENDS, RULES } from '../../../shared/cards';
-import { ART } from '../art';
+import { CARDS, CARD_HOUSES, CardHouse, DECK_RULES, HOUSES, KEYWORDS, RULES, Tier, poolOf } from '../../../shared/cards';
 import { CardFace, Sigil } from './Card';
 import { KeywordHelp } from './Help';
 
+const TIER_LABEL: Record<Tier, string> = { LEGEND: 'LEGEND · MAX 1', RARE: 'RARE · MAX 2', COMMON: 'COMMON · MAX 3' };
+
 export function Gallery({ onBack }: { onBack: () => void }) {
-  const [house, setHouse] = useState<House | 'ALL'>('ALL');
+  const [house, setHouse] = useState<CardHouse | 'ALL'>('ALL');
   const [open, setOpen] = useState<string | null>(null);
-  const houses = house === 'ALL' ? ALL_HOUSES : [house];
-  const total = ALL_HOUSES.reduce((n, h) => n + LEGENDS[h].length + COMMONS[h].length, 0);
+  const houses = house === 'ALL' ? CARD_HOUSES : [house];
+  const total = Object.keys(CARDS).length;
   return (
     <div className="gallery">
       <aside className="gal-side">
         <button className="link" onClick={onBack}>← Back</button>
         <h1 className="gal-title">All cards</h1>
-        <p className="dim gal-sub">{total} cards across 4 houses. Each house plays a fixed 23-card deck: every Legend once, every common three times.</p>
+        <p className="dim gal-sub">{total} cards: 4 houses plus Neutral. A deck is exactly {DECK_RULES.SIZE} cards from one house plus any Neutrals, with at most {DECK_RULES.MAX_LEGENDS} Legends and {DECK_RULES.MAX_RARES} Rares. Copies: Legend ×1, Rare ×2, Common ×3.</p>
         <div className="gal-tabs">
           <button className={`gal-tab${house === 'ALL' ? ' on' : ''}`} onClick={() => setHouse('ALL')}>All</button>
-          {ALL_HOUSES.map(h => (
+          {CARD_HOUSES.map(h => (
             <button key={h} className={`gal-tab${house === h ? ' on' : ''}`} style={{ ['--acc' as string]: HOUSES[h].accent }} onClick={() => setHouse(h)}>
-              <Sigil house={h} size={16} /> {HOUSES[h].name.replace('The ', '')}
+              <Sigil house={h} size={16} /> {HOUSES[h].name.replace('The ', '')} <span className="dim">{poolOf(h).length}</span>
             </button>
           ))}
         </div>
@@ -44,14 +45,12 @@ export function Gallery({ onBack }: { onBack: () => void }) {
                 <p>{H.plan}</p>
               </div>
               <div className="gal-grid">
-                {[...LEGENDS[h], ...COMMONS[h]].map(id => {
+                {poolOf(h).map(id => {
                   const d = CARDS[id];
                   return (
                     <motion.button key={id} className="gal-card" whileHover={{ y: -6 }} onClick={() => setOpen(id)}>
                       <CardFace cardId={id} scale={0.36} />
-                      <span className="mono gal-cap" style={{ color: d.tier === 'LEGEND' ? H.accent : undefined }}>
-                        {d.tier === 'LEGEND' ? 'LEGEND ×1' : 'COMMON ×3'}{d.tier === 'LEGEND' && !ART[id] ? ' · NEW' : ''}
-                      </span>
+                      <span className={`mono gal-cap cap-${d.tier.toLowerCase()}`}>{TIER_LABEL[d.tier]}</span>
                     </motion.button>
                   );
                 })}

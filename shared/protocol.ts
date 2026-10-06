@@ -7,6 +7,8 @@ export interface SeatInfo {
   house: House | null;
   ready: boolean;
   connected: boolean;
+  /** using a custom deck (otherwise the house's starter deck) */
+  customDeck: boolean;
   isBot: boolean;
 }
 
@@ -32,6 +34,8 @@ export interface ClientToServer {
   'room:join': (a: { code: string; name: string; token?: string }, ack: (r: { token: string } | { error: string }) => void) => void;
   'lobby:house': (h: House) => void;
   'lobby:ready': (ready: boolean) => void;
+  /** set a custom deck for the chosen house; null = go back to the starter deck */
+  'lobby:deck': (ids: string[] | null, ack: (r: { ok: true } | { error: string }) => void) => void;
   'game:action': (a: Action, ack: (r: { ok: true } | { error: string }) => void) => void;
   'game:forfeit': () => void;
   'game:rematch': () => void;

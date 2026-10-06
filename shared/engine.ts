@@ -2,7 +2,7 @@
 // The server owns the authoritative GameState and calls applyAction();
 // clients only ever see a redacted PlayerView built by viewFor().
 
-import { CARDS, CardDef, EffId, House, RULES, deckList } from './cards';
+import { CARDS, CardDef, CardHouse, EffId, House, RULES, deckList } from './cards';
 
 export type Row = 'F' | 'B';
 export type PIdx = 0 | 1;
@@ -14,7 +14,7 @@ export interface Unit {
   cardId: string | null; // null = Echo token
   name: string;
   owner: PIdx; // whose discard pile it goes to
-  house: House;
+  house: CardHouse;
   power: number;
   base: number;
   row: Row;
@@ -69,6 +69,7 @@ export type GEvent =
   | { t: 'steal'; uid: string; to: PIdx; row: Row }
   | { t: 'sacrifice'; uid: string; by: string }
   | { t: 'duel'; a: string; b: string }
+  | { t: 'lastwords'; uid: string; cardId: string }
   | { t: 'resolve'; p: PIdx; cardId: string }
   | { t: 'pass'; p: PIdx; auto?: boolean }
   | { t: 'turn'; p: PIdx }
@@ -97,6 +98,8 @@ const id = (g: GameState, pre: string) => `${pre}${(g.nextId++).toString(36)}`;
 // ---------------------------------------------------------------- setup
 export function createGame(opts: {
   houses: [House, House]; names?: [string, string]; seed?: number; first?: PIdx;
+  /** custom decklists (already validated); defaults to each house's starter deck */
+  decks?: [string[] | null | undefined, string[] | null | undefined];
 }): { state: GameState; events: GEvent[] } {
   const seed = opts.seed ?? Math.floor(Math.random() * 2 ** 31);
   const g: GameState = {
@@ -107,9 +110,10 @@ export function createGame(opts: {
       deck: [], hand: [], discard: [], units: [], passed: false, wins: 0,
     })) as unknown as [PlayerState, PlayerState],
   };
-  for (const p of g.players) {
-    p.deck = shuffle(g, deckList(p.house).map(cardId => ({ uid: id(g, 'c'), cardId })));
-  }
+  g.players.forEach((p, i) => {
+    const list = opts.decks?.[i] ?? deckList(p.house);
+    p.deck = shuffle(g, list.map(cardId => ({ uid: id(g, 'c'), cardId })));
+  });
   const first: PIdx = opts.first ?? (rand(g) < 0.5 ? 0 : 1);
   g.first = g.starter = g.current = first;
   const events: GEvent[] = [];
@@ -163,6 +167,44 @@ function removeUnit(g: GameState, uid: string, ev: GEvent[], sac = false) {
   pl.units = pl.units.filter(x => x.uid !== uid);
   if (!f.u.token && f.u.cardId) g.players[f.u.owner].discard.push({ uid: f.u.uid, cardId: f.u.cardId });
   if (!sac) ev.push({ t: 'destroy', uid });
+  const lw = f.u.cardId && !f.u.silenced ? CARDS[f.u.cardId].lastWords : undefined;
+  if (lw) {
+    ev.push({ t: 'lastwords', uid, cardId: f.u.cardId! });
+    lastWords(g, f.p, f.u, lw, ev);
+  }
+}
+
+const pick = <T,>(g: GameState, xs: T[]): T | undefined => (xs.length ? xs[Math.floor(rand(g) * xs.length)] : undefined);
+
+/** Untargeted effects that fire when a unit with Last Words leaves the board. */
+function lastWords(g: GameState, p: PIdx, dead: Unit, eff: EffId, ev: GEvent[]) {
+  const [nm, a1] = eff.split(':');
+  const n = Number(a1);
+  const me = g.players[p], opp = g.players[other(p)];
+  const tokenName = (dead.cardId && CARDS[dead.cardId].token) || 'Echo';
+  switch (nm) {
+    case 'token': summonToken(g, p, dead.row, n, ev, tokenName); break;
+    case 'token2': summonToken(g, p, dead.row, n, ev, tokenName); summonToken(g, p, dead.row, n, ev, tokenName); break;
+    case 'rowboost': for (const u of rowUnits(me, dead.row)) gain(u, n, 'boost', ev); break;
+    case 'boostrandom': { const u = pick(g, me.units); if (u) gain(u, n, 'boost', ev); break; }
+    case 'burnrandom': { const u = pick(g, opp.units); if (u) lose(g, u.uid, n, 'burn', ev); break; }
+    case 'poisonrandom': {
+      const u = pick(g, opp.units.filter(x => !x.poison));
+      if (u) { u.poison = true; ev.push({ t: 'status', uid: u.uid, s: 'poison' }); }
+      break;
+    }
+  }
+}
+
+function destroyUnit(g: GameState, uid: string, ev: GEvent[]) {
+  removeUnit(g, uid, ev);
+}
+
+function setStatus(u: Unit, s: 'poison' | 'grow' | 'shield', ev: GEvent[]) {
+  if (s === 'poison') { if (u.poison) return; u.poison = true; }
+  if (s === 'grow') { if (u.grow) return; u.grow = true; }
+  if (s === 'shield') { if (u.shield) return; u.shield = true; }
+  ev.push({ t: 'status', uid: u.uid, s });
 }
 
 function lose(g: GameState, uid: string, n: number, src: 'burn' | 'poison' | 'duel' | 'lose' | 'self', ev: GEvent[]) {
@@ -179,7 +221,7 @@ function gain(u: Unit, n: number, src: 'grow' | 'rally' | 'boost' | 'sacrifice',
   ev.push({ t: 'boost', uid: u.uid, n, src, power: u.power });
 }
 
-function makeUnit(g: GameState, p: PIdx, def: CardDef | null, row: Row, opts: { uid?: string; power?: number; house?: House; name?: string } = {}): Unit {
+function makeUnit(g: GameState, p: PIdx, def: CardDef | null, row: Row, opts: { uid?: string; power?: number; house?: CardHouse; name?: string } = {}): Unit {
   const power = opts.power ?? def?.power ?? 0;
   return {
     uid: opts.uid ?? id(g, 't'), cardId: def?.id ?? null, name: def?.name ?? opts.name ?? 'Echo', owner: p,
@@ -224,6 +266,30 @@ export function targetSpecFor(g: BoardLike, p: PIdx, eff: EffId | undefined): Ta
     if (!pool.length) return { kind: 'none' };
     return { kind: 'units', side: 'ally', min: Math.min(min, pool.length), max: Math.min(max, pool.length), pool, prompt };
   };
+  const [nm, a1, a2] = (eff ?? '').split(':');
+  const n1 = Number(a1), n2 = Number(a2);
+  switch (nm) {
+    case 'burn': return enemy(() => true, 1, `Burn ${n1}: choose an enemy unit`);
+    case 'burnlow': return enemy(u => u.power <= n2, 1, `Burn ${n1} to an enemy unit with ${n2} or less power`);
+    case 'burnmulti': return enemy(() => true, n2, `Burn ${n1}: choose up to ${n2} enemy units`, 1);
+    case 'weaken': return enemy(() => true, 1, `An enemy unit loses ${n1}`);
+    case 'drain': return enemy(u => u.poison, 1, `A Poisoned enemy unit loses ${n1}; this gains ${n1}`);
+    case 'venom': return enemy(() => true, 1, 'An enemy unit loses 1 for each Poisoned enemy unit');
+    case 'strip': return enemy(u => u.guard || u.shield, 1, 'Remove Guard and Shield from an enemy unit');
+    case 'silence0': return enemy(() => true, 1, 'Silence an enemy unit');
+    case 'shift': if (a1) return enemy(() => true, 1, `Move an enemy unit to its other row (it loses ${n1})`); break;
+    case 'seize': return enemy(u => u.power <= n1, 1, `Take control of an enemy unit with ${n1} or less power`);
+    case 'duellow': return enemy(u => u.power <= n1, 1, `Duel an enemy unit with ${n1} or less power`);
+    case 'execute': return enemy(u => u.power <= n1, 1, `Destroy an enemy unit with ${n1} or less power`);
+    case 'boost': return ally(() => true, 1, 1, `Boost an allied unit by ${n1}`);
+    case 'shield': return ally(u => !u.shield, 1, n1, n1 > 1 ? `Give Shield to up to ${n1} allied units` : 'Give an allied unit Shield');
+    case 'shieldboost': return ally(() => true, 1, 1, `Give an allied unit Shield and +${n1}`);
+    case 'givegrow': if (a1) return ally(u => !u.grow, 1, n1, `Give Grow to up to ${n1} allied units`); break;
+    case 'copyally': return ally(u => u.power <= n1, 1, 1, `Copy an allied unit with ${n1} or less power`);
+    case 'sacburn': return ally(() => true, 0, 1, 'You may Sacrifice an allied unit to Burn the strongest enemy');
+    case 'sacdraw': return ally(u => u.power <= 3, 0, 1, 'You may Sacrifice a unit with 3 or less power to draw 2');
+    case 'rowburn': return opp.units.length ? { kind: 'row', side: 'enemy', prompt: `Choose an enemy row: Burn ${n1} to every unit there` } : { kind: 'none' };
+  }
   switch (eff) {
     case 'poison1': return enemy(u => !u.poison, 1, 'Poison an enemy unit');
     case 'poison2': return enemy(u => !u.poison, 2, 'Poison 2 enemy units');
@@ -305,6 +371,80 @@ function applyEffect(g: GameState, p: PIdx, eff: EffId | undefined, self: Unit |
   const me = g.players[p], opp = g.players[other(p)];
   const ts = a.targets ?? [];
   const get = (uid: string) => findUnit(g, uid)?.u;
+  const [nm, a1, a2] = (eff ?? '').split(':');
+  const n1 = Number(a1), n2 = Number(a2);
+  const strongest = (us: Unit[]) => us.reduce<Unit | undefined>((m, u) => (!m || u.power > m.power ? u : m), undefined);
+  switch (nm) {
+    case 'burn': case 'burnlow': if (ts[0]) lose(g, ts[0], n1, 'burn', ev); return;
+    case 'burnmulti': for (const t of ts) lose(g, t, n1, 'burn', ev); return;
+    case 'weaken': if (ts[0]) lose(g, ts[0], n1, 'lose', ev); return;
+    case 'drain': if (ts[0]) { lose(g, ts[0], n1, 'lose', ev); if (self) gain(self, n1, 'boost', ev); } return;
+    case 'venom': if (ts[0]) lose(g, ts[0], opp.units.filter(u => u.poison).length, 'lose', ev); return;
+    case 'strip': {
+      const u = get(ts[0]);
+      if (u) { u.guard = false; u.shield = false; ev.push({ t: 'status', uid: u.uid, s: 'silence' }); }
+      return;
+    }
+    case 'silence0': {
+      const u = get(ts[0]);
+      if (u) { u.grow = u.guard = u.shield = u.poison = false; u.silenced = true; ev.push({ t: 'status', uid: u.uid, s: 'silence' }); }
+      return;
+    }
+    case 'execute': if (ts[0]) destroyUnit(g, ts[0], ev); return;
+    case 'boost': { const u = get(ts[0]); if (u) gain(u, n1, 'boost', ev); return; }
+    case 'shield': for (const t of ts) { const u = get(t); if (u) setStatus(u, 'shield', ev); } return;
+    case 'shieldboost': { const u = get(ts[0]); if (u) { setStatus(u, 'shield', ev); gain(u, n1, 'boost', ev); } return; }
+    case 'copyally': { const u = get(ts[0]); if (u) summonToken(g, p, otherRow(u.row), u.power, ev); return; }
+    case 'sacburn': {
+      const u = get(ts[0]);
+      if (!u || !self) return;
+      const n = u.power;
+      ev.push({ t: 'sacrifice', uid: u.uid, by: self.uid });
+      removeUnit(g, u.uid, ev, true);
+      const t = strongest(targetable(opp));
+      if (t) lose(g, t.uid, n, 'burn', ev);
+      return;
+    }
+    case 'sacdraw': {
+      const u = get(ts[0]);
+      if (!u || !self) return;
+      ev.push({ t: 'sacrifice', uid: u.uid, by: self.uid });
+      removeUnit(g, u.uid, ev, true);
+      draw(g, p, 2, ev);
+      return;
+    }
+    case 'rowburn': for (const u of rowUnits(opp, a.targetRow as Row)) lose(g, u.uid, n1, 'burn', ev); return;
+    case 'draw': draw(g, p, n1, ev); return;
+    case 'growboost': for (const u of me.units) if (u.grow && u !== self) gain(u, n1, 'boost', ev); return;
+    case 'backboost': for (const u of rowUnits(me, 'B')) gain(u, n1, 'boost', ev); return;
+    case 'tokenboost': for (const u of me.units) if (u.token) gain(u, n1, 'boost', ev); return;
+    case 'allboost': for (const u of me.units) if (u !== self) gain(u, n1, 'boost', ev); return;
+    case 'marshal': for (const u of me.units) if (u !== self) { gain(u, 1, 'boost', ev); setStatus(u, 'shield', ev); } return;
+    case 'allylose': for (const u of me.units.slice()) if (u !== self) lose(g, u.uid, n1, 'self', ev); return;
+    case 'hurtstrongest': { const t = strongest(me.units.filter(u => u !== self)); if (t) lose(g, t.uid, n1, 'self', ev); return; }
+    case 'burnstrongest': { const t = strongest(targetable(opp)); if (t) lose(g, t.uid, n1, 'burn', ev); return; }
+    case 'boardlose':
+      for (const u of [...opp.units, ...me.units]) if (u !== self && findUnit(g, u.uid)) lose(g, u.uid, n1, u.owner === p ? 'self' : 'burn', ev);
+      return;
+    case 'sweep': for (const u of opp.units.slice()) if (u.power <= n2) lose(g, u.uid, n1, 'burn', ev); return;
+    case 'selfpoison': if (self) setStatus(self, 'poison', ev); return;
+    case 'eldertree':
+      for (const u of opp.units.slice()) if (u.poison) lose(g, u.uid, 1, 'lose', ev);
+      for (const u of me.units) if (u.grow && u !== self) gain(u, 1, 'boost', ev);
+      return;
+    case 'givegrow': if (a1) { for (const t of ts) { const u = get(t); if (u) setStatus(u, 'grow', ev); } return; } break;
+    case 'shift': if (a1) {
+      const u = get(ts[0]);
+      if (u) {
+        const to = otherRow(u.row);
+        if (rowUnits(opp, to).length < RULES.ROW_MAX) { u.row = to; ev.push({ t: 'move', uid: u.uid, row: to }); }
+        lose(g, u.uid, n1, 'lose', ev);
+      }
+      return;
+    } break;
+    case 'seize': { seize(g, p, ts[0], ev); return; }
+    case 'duellow': { if (self && ts[0]) duel(g, self.uid, ts[0], ev); return; }
+  }
   switch (eff) {
     case 'poison1': case 'poison2': case 'poison3':
       for (const t of ts) { const u = get(t); if (u && !u.poison) { u.poison = true; ev.push({ t: 'status', uid: t, s: 'poison' }); } }
@@ -395,18 +535,7 @@ function applyEffect(g: GameState, p: PIdx, eff: EffId | undefined, self: Unit |
       }
       break;
     }
-    case 'seize4': {
-      const u = get(ts[0]);
-      if (!u) break;
-      let row = u.row;
-      if (rowUnits(me, row).length >= RULES.ROW_MAX) row = otherRow(row);
-      if (rowUnits(me, row).length >= RULES.ROW_MAX) break;
-      opp.units = opp.units.filter(x => x !== u);
-      u.row = row; u.poison = false;
-      me.units.push(u);
-      ev.push({ t: 'steal', uid: u.uid, to: p, row });
-      break;
-    }
+    case 'seize4': seize(g, p, ts[0], ev); break;
     case 'echo3front': summonToken(g, p, 'F', 3, ev); break;
     case 'afterimage': {
       if (!me.units.length) break;
@@ -417,19 +546,34 @@ function applyEffect(g: GameState, p: PIdx, eff: EffId | undefined, self: Unit |
     case 'duel': case 'duel3': {
       if (!self) break;
       if (eff === 'duel3') gain(self, 3, 'boost', ev);
-      const tgt = ts[0];
-      if (!tgt) break;
-      ev.push({ t: 'duel', a: self.uid, b: tgt });
-      for (let guard = 0; guard < 40; guard++) {
-        const A = get(self.uid), B = get(tgt);
-        if (!A || !B) break;
-        lose(g, B.uid, A.power, 'duel', ev);
-        const A2 = get(self.uid), B2 = get(tgt);
-        if (!A2 || !B2) break;
-        lose(g, A2.uid, B2.power, 'duel', ev);
-      }
+      if (ts[0]) duel(g, self.uid, ts[0], ev);
       break;
     }
+  }
+}
+
+function seize(g: GameState, p: PIdx, uid: string | undefined, ev: GEvent[]) {
+  const me = g.players[p], opp = g.players[other(p)];
+  const u = uid ? opp.units.find(x => x.uid === uid) : undefined;
+  if (!u) return;
+  let row = u.row;
+  if (rowUnits(me, row).length >= RULES.ROW_MAX) row = otherRow(row);
+  if (rowUnits(me, row).length >= RULES.ROW_MAX) return;
+  opp.units = opp.units.filter(x => x !== u);
+  u.row = row; u.poison = false;
+  me.units.push(u);
+  ev.push({ t: 'steal', uid: u.uid, to: p, row });
+}
+
+function duel(g: GameState, a: string, b: string, ev: GEvent[]) {
+  ev.push({ t: 'duel', a, b });
+  for (let guard = 0; guard < 40; guard++) {
+    const A = findUnit(g, a)?.u, B = findUnit(g, b)?.u;
+    if (!A || !B) break;
+    lose(g, B.uid, A.power, 'duel', ev);
+    const A2 = findUnit(g, a)?.u, B2 = findUnit(g, b)?.u;
+    if (!A2 || !B2) break;
+    lose(g, A2.uid, B2.power, 'duel', ev);
   }
 }
 

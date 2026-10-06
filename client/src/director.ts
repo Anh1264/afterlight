@@ -6,7 +6,7 @@ import type { GameMsg } from '../../shared/protocol';
 
 export type FxKind =
   | 'burn' | 'poison' | 'duel' | 'lose' | 'self' | 'block' | 'grow' | 'rally' | 'boost' | 'sacrifice'
-  | 'st-poison' | 'st-grow' | 'st-shield' | 'st-silence' | 'destroy' | 'summon' | 'steal' | 'move' | 'land';
+  | 'st-poison' | 'st-grow' | 'st-shield' | 'st-silence' | 'destroy' | 'summon' | 'steal' | 'move' | 'land' | 'lastwords';
 
 export interface Fx { id: number; kind: FxKind; x: number; y: number; n?: number; house?: string }
 export interface Banner { id: number; kind: 'resolve' | 'round' | 'roundEnd' | 'turn' | 'pass'; title: string; sub?: string; p?: PIdx; tone?: 'win' | 'lose' | 'tie' }
@@ -31,6 +31,7 @@ let uidN = 1;
 export class Director {
   s: DirectorState = { shown: null, fx: [], banner: null, reveal: null, pulses: {}, log: [], busy: false, deadline: null, shake: 0 };
   private q: GameMsg[] = [];
+  private lastPos = new Map<string, { x: number; y: number }>();
   private running = false;
   private subs = new Set<() => void>();
   lastSeq = 0;
@@ -186,6 +187,7 @@ export class Director {
         const f = this.find(w, e.uid);
         if (!f) break;
         const pos = this.locate(e.uid);
+        if (pos) this.lastPos.set(e.uid, pos);
         this.fx('destroy', null, { house: f.u.house }, pos);
         w.players[f.p].units = w.players[f.p].units.filter(u => u.uid !== e.uid);
         if (!f.u.token) w.players[f.u.owner].discardCount++;
@@ -198,6 +200,7 @@ export class Director {
         const f = this.find(w, e.uid);
         if (!f) break;
         const from = this.locate(e.uid);
+        if (from) this.lastPos.set(e.uid, from);
         this.fx('sacrifice', null, {}, from);
         w.players[f.p].units = w.players[f.p].units.filter(u => u.uid !== e.uid);
         if (!f.u.token) w.players[f.u.owner].discardCount++;
@@ -287,6 +290,12 @@ export class Director {
         w.over = true; w.winner = e.winner;
         break;
       case 'draw':
+        if (e.p === w.me && w.round === final.round) this.logLine(e.p, `You drew ${e.n} card${e.n > 1 ? 's' : ''}`);
+        break;
+      case 'lastwords':
+        this.fx('lastwords', null, {}, this.lastPos.get(e.uid) ?? null);
+        this.logLine(null, `${CARDS[e.cardId].name}: Last Words`);
+        await D(450);
         break;
     }
   }

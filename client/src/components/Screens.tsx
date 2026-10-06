@@ -2,7 +2,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
 import { ALL_HOUSES, CARDS, HOUSES, House, KEYWORDS, deckList } from '../../../shared/cards';
 import type { RoomSnapshot } from '../../../shared/protocol';
-import { socket } from '../net';
+import { sendDeck, socket, store } from '../net';
+import { DeckBuilder } from './DeckBuilder';
 import { CardBack, CardFace, Sigil } from './Card';
 
 export function Home({ name, setName, onBot, onCreate, onCards, busy, error }: {
@@ -98,8 +99,25 @@ export function Lobby({ room, onLeave, onCards }: { room: RoomSnapshot; onLeave:
   const [copied, setCopied] = useState(false);
   const [peek, setPeek] = useState<House | null>(null);
   const link = `${location.origin}/r/${room.code}`;
-  const choose = (h: House) => socket.emit('lobby:house', h);
+  const [building, setBuilding] = useState(false);
+  const [deckErr, setDeckErr] = useState<string | null>(null);
+  const choose = async (h: House) => {
+    if (h === me.house) return;
+    socket.emit('lobby:house', h);
+    const saved = store.deck(h);
+    if (saved) { const e = await sendDeck(saved); if (e) { store.setDeck(h, null); setDeckErr(`Saved deck reset: ${e}`); } }
+  };
   const shownHouse = peek ?? me.house;
+  const myList = me.house ? (me.customDeck ? store.deck(me.house) ?? deckList(me.house) : deckList(me.house)) : [];
+  const shownList = shownHouse ? (shownHouse === me.house ? myList : deckList(shownHouse)) : [];
+  const save = async (ids: string[] | null) => {
+    if (!me.house) return;
+    const e = await sendDeck(ids);
+    if (e) { setDeckErr(e); return; }
+    store.setDeck(me.house, ids);
+    setDeckErr(null);
+    setBuilding(false);
+  };
   return (
     <div className="lobby">
       <div className="lobby-top">
@@ -123,7 +141,7 @@ export function Lobby({ room, onLeave, onCards }: { room: RoomSnapshot; onLeave:
           const on = me.house === h;
           return (
             <motion.button key={h} className={`house${on ? ' on' : ''}`} style={{ background: H.paper, borderColor: on ? H.accent : H.frame, ['--acc' as string]: H.accent }}
-              whileHover={{ y: -6 }} onMouseEnter={() => setPeek(h)} onMouseLeave={() => setPeek(null)} onClick={() => choose(h)}>
+              whileHover={{ y: -6 }} onMouseEnter={() => setPeek(h)} onMouseLeave={() => setPeek(null)} onClick={() => { void choose(h); }}>
               <div className="house-back"><CardBack house={h} scale={0.26} /></div>
               <div className="house-info">
                 <span className="mono" style={{ color: H.accent }}>{H.tagline.toUpperCase()}</span>
@@ -137,13 +155,13 @@ export function Lobby({ room, onLeave, onCards }: { room: RoomSnapshot; onLeave:
       </div>
       <div className="lobby-bottom">
         <div className="legends">
-          {shownHouse ? deckList(shownHouse).slice(0, 5).map(id => (
+          {shownHouse ? [...new Set(shownList)].filter(id => CARDS[id].tier === 'LEGEND').slice(0, 4).map(id => (
             <motion.div key={id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}><CardFace cardId={id} scale={0.25} /></motion.div>
           )) : <span className="mono dim legends-hint">HOVER A HOUSE TO SEE ITS LEGENDS</span>}
           {shownHouse && <div className="deck-list">
-            <span className="mono dim">DECK · {deckList(shownHouse).length} CARDS</span>
-            {[...new Set(deckList(shownHouse))].map(id => (
-              <div key={id}><span>{CARDS[id].name}</span><span className="mono dim">{CARDS[id].tier === 'LEGEND' ? '×1' : '×3'} · {CARDS[id].kind === 'unit' ? CARDS[id].power : 'SP'}</span></div>
+            <span className="mono dim">{shownHouse === me.house && me.customDeck ? 'YOUR CUSTOM DECK' : 'STARTER DECK'} · {shownList.length} CARDS</span>
+            {[...new Set(shownList)].map(id => (
+              <div key={id} className={`dl-${CARDS[id].tier.toLowerCase()}`}><span>{CARDS[id].name}</span><span className="mono dim">×{shownList.filter(x => x === id).length} · {CARDS[id].kind === 'unit' ? CARDS[id].power : 'SP'}</span></div>
             ))}
           </div>}
         </div>
@@ -151,6 +169,17 @@ export function Lobby({ room, onLeave, onCards }: { room: RoomSnapshot; onLeave:
           <Seat label="YOU" s={me} />
           <span className="vs">VS</span>
           {op ? <Seat label={op.isBot ? 'BOT' : 'OPPONENT'} s={op} /> : <div className="seat empty"><span className="mono dim">WAITING FOR OPPONENT…</span><span className="dots"><i /><i /><i /></span></div>}
+          {me.house && (
+            <div className="deck-chip">
+              <div className="grow">
+                <span className="mono dim">YOUR DECK</span>
+                <strong>{me.customDeck ? 'Custom deck' : 'Starter deck'} · {myList.length} cards</strong>
+                {deckErr && <span className="error" style={{ fontSize: 12 }}>{deckErr}</span>}
+              </div>
+              {me.customDeck && <button className="btn small ghost" onClick={() => { void save(null); }}>Use starter</button>}
+              <button className="btn small" onClick={() => setBuilding(true)}>Build deck</button>
+            </div>
+          )}
           <div className="seat-actions">
             <button className={`btn big ${me.ready ? '' : 'dark'}`} disabled={!me.house} onClick={() => socket.emit('lobby:ready', !me.ready)}>
               {!me.house ? 'Pick a house' : me.ready ? (room.vsBot ? 'Starting…' : 'Not ready') : room.vsBot ? 'Start match' : 'Ready'}
@@ -160,6 +189,9 @@ export function Lobby({ room, onLeave, onCards }: { room: RoomSnapshot; onLeave:
           </div>
         </div>
       </div>
+      <AnimatePresence>
+        {building && me.house && <DeckBuilder house={me.house} initial={myList} onSave={ids => { void save(ids); }} onClose={() => setBuilding(false)} />}
+      </AnimatePresence>
     </div>
   );
 }

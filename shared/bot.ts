@@ -12,6 +12,8 @@ function evaluate(g: GameState, me: PIdx): number {
   const turnsLeft = o.passed ? 0 : Math.min(p.hand.length, o.hand.length);
   const k = turnsLeft * 0.8;
   let v = score(p) - score(o);
+  // a card in hand is a future play; values Draw effects (every candidate play spends one card equally)
+  v += 4 * (p.hand.length - o.hand.length);
   const val = (u: Unit, sign: number) => {
     let x = 0;
     if (u.grow) x += k;

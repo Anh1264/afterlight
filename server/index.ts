@@ -6,7 +6,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { Server, Socket } from 'socket.io';
-import { ALL_HOUSES, House } from '../shared/cards';
+import { ALL_HOUSES, House, validateDeck } from '../shared/cards';
 import { GEvent, GameState, PIdx, applyAction, createGame, forfeit, viewFor } from '../shared/engine';
 import { decide } from '../shared/bot';
 import type { ClientToServer, RoomSnapshot, ServerToClient } from '../shared/protocol';
@@ -21,6 +21,7 @@ interface Seat {
   name: string;
   house: House | null;
   ready: boolean;
+  deck: string[] | null;
   socketId: string | null;
   isBot: boolean;
   dropTimer?: NodeJS.Timeout;
@@ -54,7 +55,8 @@ const clean = (s: unknown, fallback: string) => String(s ?? '').replace(/[^\p{L}
 const app = express();
 app.get('/health', (_req, res) => res.json({ ok: true, rooms: rooms.size }));
 if (fs.existsSync(DIST)) {
-  app.use(express.static(DIST, { maxAge: '1h', index: false }));
+  app.use(express.static(DIST, { maxAge: '1h', index: false, setHeaders: (res, file) => { if (file.endsWith('manifest.json')) res.setHeader('Cache-Control', 'no-cache'); } }));
+  app.use('/art', (_req, res) => { res.status(404).end(); });
   app.use((_req, res) => res.sendFile(path.join(DIST, 'index.html')));
 }
 const http = createServer(app);
@@ -65,7 +67,7 @@ function snapshot(r: Room, you: PIdx): RoomSnapshot {
   return {
     code: r.code, phase: r.phase, vsBot: r.vsBot, you, rematch: r.rematch,
     seats: r.seats.map(s => s && {
-      name: s.name, house: s.house, ready: s.ready, connected: s.isBot || !!s.socketId, isBot: s.isBot,
+      name: s.name, house: s.house, ready: s.ready, connected: s.isBot || !!s.socketId, isBot: s.isBot, customDeck: !!s.deck,
     }) as RoomSnapshot['seats'],
   };
 }
@@ -96,7 +98,7 @@ function animTime(events: GEvent[]) {
 // ------------------------------------------------------------- game flow
 function startGame(r: Room) {
   const [a, b] = r.seats as [Seat, Seat];
-  const { state, events } = createGame({ houses: [a.house!, b.house!], names: [a.name, b.name] });
+  const { state, events } = createGame({ houses: [a.house!, b.house!], names: [a.name, b.name], decks: [a.deck, b.deck] });
   r.game = state; r.phase = 'playing'; r.seq = 0; r.rematch = [false, false];
   sendRoom(r);
   scheduleTurn(r, events);
@@ -167,8 +169,8 @@ io.on('connection', (socket: Socket<ClientToServer, ServerToClient>) => {
       deadline: null, rematch: [false, false], touched: Date.now(),
     };
     const token = newToken();
-    r.seats[0] = { token, name: clean(name, 'Player 1'), house: null, ready: false, socketId: null, isBot: false };
-    if (r.vsBot) r.seats[1] = { token: newToken(), name: 'Afterlight Bot', house: null, ready: true, socketId: null, isBot: true };
+    r.seats[0] = { token, name: clean(name, 'Player 1'), house: null, ready: false, deck: null, socketId: null, isBot: false };
+    if (r.vsBot) r.seats[1] = { token: newToken(), name: 'Afterlight Bot', house: null, ready: true, deck: null, socketId: null, isBot: true };
     rooms.set(r.code, r);
     ack({ code: r.code, token });
     attach(r, 0);
@@ -182,7 +184,7 @@ io.on('connection', (socket: Socket<ClientToServer, ServerToClient>) => {
     const free = r.seats.findIndex(s => !s);
     if (free < 0 || r.phase !== 'lobby') return ack({ error: 'This match is already full.' });
     const t = newToken();
-    r.seats[free] = { token: t, name: clean(name, `Player ${free + 1}`), house: null, ready: false, socketId: null, isBot: false };
+    r.seats[free] = { token: t, name: clean(name, `Player ${free + 1}`), house: null, ready: false, deck: null, socketId: null, isBot: false };
     ack({ token: t });
     attach(r, free as PIdx);
   });
@@ -190,8 +192,22 @@ io.on('connection', (socket: Socket<ClientToServer, ServerToClient>) => {
   socket.on('lobby:house', h => {
     if (!room || seatIdx === null || room.phase !== 'lobby' || !ALL_HOUSES.includes(h)) return;
     const s = room.seats[seatIdx]!;
+    if (s.house !== h) s.deck = null;
     s.house = h; s.ready = false;
     sendRoom(room);
+  });
+
+  socket.on('lobby:deck', (ids, ack) => {
+    if (!room || seatIdx === null || room.phase !== 'lobby') return ack({ error: 'Not in a lobby.' });
+    const s = room.seats[seatIdx]!;
+    if (!s.house) return ack({ error: 'Pick a house first.' });
+    if (ids === null) { s.deck = null; s.ready = false; sendRoom(room); return ack({ ok: true }); }
+    if (!Array.isArray(ids)) return ack({ error: 'Bad deck.' });
+    const err = validateDeck(s.house, ids.map(String));
+    if (err) return ack({ error: err });
+    s.deck = ids.map(String); s.ready = false;
+    sendRoom(room);
+    ack({ ok: true });
   });
 
   socket.on('lobby:ready', ready => {

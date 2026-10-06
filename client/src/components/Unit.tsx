@@ -2,7 +2,7 @@ import { motion, useAnimationControls } from 'framer-motion';
 import { useEffect } from 'react';
 import { HOUSES } from '../../../shared/cards';
 import type { Unit } from '../../../shared/engine';
-import { ART, GRAIN, artSrc, particleSrc } from '../art';
+import { GRAIN, artSrc, layoutOf, particleSrc, useHasArt } from '../art';
 import { Sigil } from './Card';
 
 export type Pulse = { kind: string; key: number; dx?: number; dy?: number } | undefined;
@@ -35,7 +35,8 @@ export function MiniUnit({
     else void ctl.start({ scale: [1, 1.06, 1], transition: { duration: 0.28 } });
   }, [pulse?.key]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const art = u.cardId ? ART[u.cardId] : undefined;
+  const has = useHasArt(u.cardId);
+  const art = u.cardId && has ? layoutOf(u.cardId) : undefined;
   const delta = u.power - u.base;
   return (
     <motion.div

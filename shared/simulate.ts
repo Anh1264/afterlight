@@ -1,13 +1,34 @@
 // Bot-vs-bot matrix + random fuzz. Run: npm run sim [games-per-pair]
-import { ALL_HOUSES, CARDS, House } from './cards';
+import { ALL_HOUSES, CARDS, DECK_RULES, House, deckPool, validateDeck } from './cards';
 import { decide, candidatePlays } from './bot';
 import { Action, GameState, PIdx, applyAction, createGame } from './engine';
 
 function mulberry(seed: number) { return () => { let t = (seed = (seed + 0x6d2b79f5) >>> 0); t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 
-function play(h0: House, h1: House, seed: number, first: PIdx, randomBots = false) {
+/** A random legal deck, used to fuzz every card in the pool. */
+export function randomDeck(h: House, rnd: () => number): string[] {
+  const pool = deckPool(h);
+  const out: string[] = [];
+  let guard = 0;
+  while (out.length < DECK_RULES.SIZE && guard++ < 5000) {
+    const id = pool[Math.floor(rnd() * pool.length)];
+    {
+      const trial = [...out, id];
+      const copies = trial.filter(x => x === id).length;
+      const legends = trial.filter(x => CARDS[x].tier === 'LEGEND').length;
+      const rares = trial.filter(x => CARDS[x].tier === 'RARE').length;
+      if (copies <= DECK_RULES.COPIES[CARDS[id].tier] && legends <= DECK_RULES.MAX_LEGENDS && rares <= DECK_RULES.MAX_RARES) out.push(id);
+    }
+  }
+  const err = validateDeck(h, out);
+  if (err) throw new Error('randomDeck: ' + err);
+  return out;
+}
+
+function play(h0: House, h1: House, seed: number, first: PIdx, randomBots = false, randomDecks = false) {
   const rnd = mulberry(seed * 7 + 1);
-  const { state: g } = createGame({ houses: [h0, h1], seed, first });
+  const decks = randomDecks ? [randomDeck(h0, rnd), randomDeck(h1, rnd)] as [string[], string[]] : undefined;
+  const { state: g } = createGame({ houses: [h0, h1], seed, first, decks });
   let plays = 0;
   for (let i = 0; i < 400 && !g.over; i++) {
     const p = g.current;
@@ -35,7 +56,8 @@ function check(g: GameState) {
 const N = Number(process.argv[2] ?? 200);
 // fuzz
 for (let s = 0; s < 300; s++) play(ALL_HOUSES[s % 4], ALL_HOUSES[(s >> 2) % 4], s, (s % 2) as PIdx, true);
-console.log('fuzz: 300 random matches OK');
+for (let s = 0; s < 400; s++) play(ALL_HOUSES[s % 4], ALL_HOUSES[(s >> 2) % 4], 9000 + s, (s % 2) as PIdx, s % 2 === 0, true);
+console.log('fuzz: 700 matches OK (random plays, random legal decks)');
 const win: Record<string, number[]> = {};
 let firstW = 0, secondW = 0, draws = 0, rounds3 = 0, totalPlays = 0, games = 0;
 for (const a of ALL_HOUSES) for (const b of ALL_HOUSES) {

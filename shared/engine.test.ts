@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { CARDS } from './cards';
+import { CARDS, RULES, STARTERS, ALL_HOUSES, validateDeck } from './cards';
 import { GameState, PIdx, applyAction, createGame, targetSpecFor, totals, viewFor } from './engine';
 
 function setup(h0: any, h1: any, hand0: string[], hand1: string[]) {
@@ -60,7 +60,7 @@ const act = (g: GameState, p: PIdx, a: any) => { const r = applyAction(g, p, a);
   assert.ok(ev.some(e => e.t === 'resolve'));
   assert.equal(g.players[1].units.length, 0);
   assert.equal(g.players[0].units.find(u => u.cardId === 'aiden')?.power, 6);
-  assert.deepEqual(totals(g), [7, 0]);
+  assert.deepEqual(totals(g), [6 + RULES.FIRST_LIGHT, 0]);
   console.log('duel ok');
 }
 // view redaction
@@ -72,3 +72,30 @@ const act = (g: GameState, p: PIdx, a: any) => { const r = applyAction(g, p, a);
   console.log('view ok');
 }
 console.log('all tests passed');
+// Set 2 mechanics
+{
+  for (const h of ALL_HOUSES) assert.equal(validateDeck(h, STARTERS[h]), null, h);
+  assert.notEqual(validateDeck('COVEN', [...STARTERS.COVEN.slice(1), 'aiden']), null);
+  // Last Words: Phoenix Whelp dies to burn -> 5-power Phoenix token in same row
+  const g = setup('EMBER', 'EMBER', ['phoenix-whelp', 'pyre-hound'], ['fireball', 'pyre-hound']);
+  act(g, 0, { type: 'play', uid: 'a0', row: 'B' });
+  const whelp = g.players[0].units[0].uid;
+  const ev = act(g, 1, { type: 'play', uid: 'b0', targets: [whelp] });
+  assert.ok(ev.some(e => e.t === 'lastwords'));
+  const ph = g.players[0].units.find(u => u.name === 'Phoenix');
+  assert.equal(ph?.power, 5); assert.equal(ph?.row, 'B');
+  // Draw: Oracle Prime with Resolve draws 2
+  const g2 = setup('ECHO', 'COVEN', ['oracle-prime', 'patchwork'], []);
+  g2.players[1].passed = true;
+  const before = g2.players[0].hand.length;
+  act(g2, 0, { type: 'play', uid: 'a0', row: 'F' });
+  assert.equal(g2.players[0].hand.length, before - 1 + 2);
+  // Execute ignores Shield
+  const g3 = setup('EMBER', 'ORDER', ['azhar', 'pyre-hound'], ['shieldbearer', 'lancer']);
+  act(g3, 0, { type: 'play', uid: 'a1', row: 'F' });
+  act(g3, 1, { type: 'play', uid: 'b0', row: 'F' });
+  act(g3, 0, { type: 'play', uid: 'a0', row: 'F', targets: ['b0'] });
+  assert.equal(g3.players[1].units.length, 0);
+  console.log('set 2 ok');
+}
+console.log('all tests passed (incl. set 2)');
