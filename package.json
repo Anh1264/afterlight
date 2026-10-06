@@ -8,6 +8,8 @@
     "build": "node scripts/art-manifest.mjs && vite build",
     "start": "tsx server/index.ts",
     "test": "tsx shared/engine.test.ts",
+    "typecheck": "tsc --noEmit -p .",
+    "check": "npm run -s typecheck && npm test",
     "sim": "tsx shared/simulate.ts"
   },
   "engines": {

@@ -3,3 +3,7 @@ dist
 e2e/out
 .DS_Store
 client/public/art/manifest.json
+Claude outputs/
+e2e/scratch/
+.claude/settings.local.json
+.claude/worktrees/
