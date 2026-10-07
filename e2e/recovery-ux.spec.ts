@@ -99,6 +99,36 @@ test.describe('ux2 connection-lost banner', () => {
     }
   });
 
+  test('the overlay blocks the keyboard too: Tab never reaches the match, and Enter/Space do not arm PASS', async ({ browser }) => {
+    test.setTimeout(120_000);
+    const port = spawnPort(14);
+    const srv = await spawnServer(port, 'server/index.ts');
+    const { context, page } = await pageOn(browser, srv.url);
+    try {
+      await startBotMatch(page);
+      await expect.poll(() => isMyTurn(page), { timeout: 60_000, intervals: [200, 300, 500] }).toBe(true);
+      await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+      const passBefore = (await page.locator('.btn.pass').textContent()) ?? '';
+      await srv.stop('SIGTERM');
+      await expect(page.getByText(BANNER, { exact: true })).toBeVisible({ timeout: 2_000 });
+      for (let i = 0; i < 8; i++) {
+        await page.keyboard.press('Tab');
+        const inGame = await page.evaluate(() => {
+          const a = document.activeElement;
+          return a !== null && a.closest('.game') !== null;
+        });
+        expect(inGame, `after Tab ${i + 1} focus must not be inside the match (.game)`).toBe(false);
+      }
+      await page.keyboard.press('Enter');
+      await page.keyboard.press('Space');
+      await page.waitForTimeout(300);
+      expect((await page.locator('.btn.pass').textContent()) ?? '', 'PASS was not armed from the keyboard').toBe(passBefore);
+    } finally {
+      await context.close();
+      await srv.stop('SIGKILL');
+    }
+  });
+
   test('a brief network drop with the server up: banner shows then hides, the match continues, no RESTARTED', async ({ page }) => {
     test.setTimeout(90_000);
     await page.addInitScript(k => localStorage.setItem(k, '1'), SEEN_RULES_KEY);
@@ -179,7 +209,7 @@ test.describe('ux5 recovery messages are notices, not errors (1280x600)', () => 
 test.describe('ux6 the busy button', () => {
   test('reads Connecting... and is disabled while a create is pending, stays disabled during the retry, and recovers after the lobby', async ({ browser }) => {
     test.setTimeout(120_000);
-    const port = spawnPort(1); // 3171 (offset 11) is used by another worktree's server
+    const port = spawnPort(1);
     const srv = await spawnServer(port, 'server/index.ts');
     let next: SpawnedServer | null = null;
     const { context, page } = await pageOn(browser, srv.url);
@@ -201,6 +231,64 @@ test.describe('ux6 the busy button', () => {
       await page.goBack();
       await expect(play).toHaveText('Play vs Bot');
       await expect(play).toBeEnabled();
+    } finally {
+      await context.close();
+      await srv.stop('SIGKILL');
+      await next?.stop('SIGTERM');
+    }
+  });
+});
+
+test.describe('ux7 a restart while sitting in a lobby is not a silent dead end', () => {
+  const forfeit = async (page: Page) => {
+    page.on('dialog', d => { void d.accept(); });
+    await page.getByRole('button', { name: 'Forfeit' }).click();
+    await expect(page.locator('.end-title')).toBeVisible({ timeout: 15_000 });
+  };
+
+  test('rematch lobby (no game message after the rematch), server restarts: RESTARTED and Home', async ({ browser }) => {
+    test.setTimeout(120_000);
+    const port = spawnPort(12);
+    const srv = await spawnServer(port, 'server/index.ts');
+    let next: SpawnedServer | null = null;
+    const { context, page } = await pageOn(browser, srv.url);
+    try {
+      await startBotMatch(page);
+      await forfeit(page);
+      await page.getByRole('button', { name: 'Rematch' }).click();
+      await expect(page.getByRole('heading', { name: 'Choose your house' })).toBeVisible({ timeout: 15_000 });
+      await waitForUptime(srv.url); // see server-proc.ts: the old server must be older than the boot tolerance
+      await srv.stop('SIGTERM');
+      next = await spawnServer(port, 'server/index.ts');
+      await expect(page.getByText(RESTARTED)).toBeVisible({ timeout: 10_000 });
+      expect(new URL(page.url()).pathname).toBe('/');
+      await expect(page.getByRole('button', { name: 'Play vs Bot' })).toBeVisible();
+    } finally {
+      await context.close();
+      await srv.stop('SIGKILL');
+      await next?.stop('SIGTERM');
+    }
+  });
+
+  test('a new bot lobby after a finished match (Back to Home, Play vs Bot, no game message yet), server restarts: RESTARTED and Home', async ({ browser }) => {
+    test.setTimeout(120_000);
+    const port = spawnPort(13);
+    const srv = await spawnServer(port, 'server/index.ts');
+    let next: SpawnedServer | null = null;
+    const { context, page } = await pageOn(browser, srv.url);
+    try {
+      await startBotMatch(page);
+      await forfeit(page);
+      await page.goBack();
+      const play = page.getByRole('button', { name: 'Play vs Bot' });
+      await expect(play).toBeVisible();
+      await play.click();
+      await expect(page.getByRole('heading', { name: 'Choose your house' })).toBeVisible({ timeout: 15_000 });
+      await waitForUptime(srv.url);
+      await srv.stop('SIGTERM');
+      next = await spawnServer(port, 'server/index.ts');
+      await expect(page.getByText(RESTARTED)).toBeVisible({ timeout: 10_000 });
+      expect(new URL(page.url()).pathname).toBe('/');
     } finally {
       await context.close();
       await srv.stop('SIGKILL');

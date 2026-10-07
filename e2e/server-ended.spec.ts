@@ -101,6 +101,8 @@ test('refused socket at load: after the server lifts the cap, Play vs Bot reache
     await refusing.stop('SIGTERM');
     open = await spawnServer(port, 'e2e/test-server.ts');
     const started = Date.now();
+    // Once the retry connects, the stale refusal text must go by itself, before any click.
+    await expect(page.getByText('Too many connections from your network.')).toHaveCount(0, { timeout: 15_000 });
     await page.getByRole('button', { name: 'Play vs Bot' }).click();
     await expect(page.getByRole('heading', { name: 'Choose your house' })).toBeVisible({ timeout: 15_000 - (Date.now() - started) });
   } finally {
@@ -150,5 +152,28 @@ test('ux3 browser Back from the ServerEnded screen leaves it and shows what the 
   } finally {
     await context.close();
     await srv.stop('SIGTERM');
+  }
+});
+
+test('refusal at load on /r/CODE with a saved token never shows the invite heading, and ends in the ended notice once the cap lifts', async ({ browser }) => {
+  test.setTimeout(90_000);
+  const port = spawnPort(6);
+  const refusing = await spawnServer(port, 'e2e/test-server.ts', { MAX_SOCKETS_PER_IP: '0' });
+  let open: Awaited<ReturnType<typeof spawnServer>> | null = null;
+  const { context, page } = await pageOn(browser, refusing.url);
+  try {
+    await page.addInitScript(([key, tok]) => localStorage.setItem(key, tok), ['al:t:ZZZZV', 'ab12cd34ef56ab12cd34ef56ab12cd34']);
+    await page.goto('/r/ZZZZV');
+    await expect(page.getByText('Too many connections from your network.')).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(/YOU.VE BEEN INVITED/)).toHaveCount(0);
+    await refusing.stop('SIGTERM');
+    open = await spawnServer(port, 'e2e/test-server.ts');
+    await expect(page.getByText('That match has ended. Start a new one.')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/YOU.VE BEEN INVITED/)).toHaveCount(0);
+    await expect(page.getByText('Too many connections from your network.')).toHaveCount(0);
+  } finally {
+    await context.close();
+    await refusing.stop('SIGKILL');
+    await open?.stop('SIGTERM');
   }
 });

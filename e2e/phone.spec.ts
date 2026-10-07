@@ -104,6 +104,30 @@ test.describe('c1 iPhone SE landscape 667x375', () => {
   });
 });
 
+test.describe('c1 narrow phones: nothing is pushed past the viewport edges', () => {
+  for (const [w, h] of [[360, 640], [320, 568]]) {
+    test.describe(`${w}x${h}`, () => {
+      test.use({ userAgent: UA_IPHONE, viewport: { width: w, height: h }, hasTouch: true, isMobile: true });
+
+      test(`the AFTERLIGHT heading, Copy link and Try anyway fit inside 0..${w} horizontally`, async ({ page }) => {
+        await page.goto('/');
+        await expect(page.getByText(MADE_FOR_DESKTOP)).toBeVisible();
+        const targets = {
+          heading: page.getByText('AFTERLIGHT').first(),
+          copy: page.getByRole('button', { name: 'Copy link' }),
+          tryAnyway: page.getByText('Try anyway'),
+        };
+        for (const [name, loc] of Object.entries(targets)) {
+          const b = await loc.boundingBox();
+          if (!b) throw new Error(`${name} has no box`);
+          expect(b.x, `${name} left edge`).toBeGreaterThanOrEqual(0);
+          expect(b.x + b.width, `${name} right edge`).toBeLessThanOrEqual(w);
+        }
+      });
+    });
+  }
+});
+
 test.describe('c1 Copy link', () => {
   test.use({ userAgent: UA_IPHONE, viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
 

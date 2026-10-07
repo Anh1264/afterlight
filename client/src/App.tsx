@@ -26,6 +26,7 @@ export default function App() {
   const setName = (n: string) => { setNameS(n); store.setName(n); };
   const [notice, setNotice] = useState<string | null>(null); // calm messages: restarted, ended, offline
   const [retrying, setRetrying] = useState(false); // a start is waiting for the server to come back
+  const refusal = useRef<string | null>(null); // the last connect_error message we showed
   const [down, setDown] = useState(() => !socket.connected);
   const overRef = useRef(false); // the last state the server sent says the match is over
   const [ended, setEnded] = useState<ServerEndReason | null>(null);
@@ -41,6 +42,7 @@ export default function App() {
   useEffect(() => {
     const seen = () => { const c = codeFromPath(); if (c) lastSeen.current = { code: c, bootAt: bootRef.current }; };
     const onRoom = (r: RoomSnapshot) => {
+      overRef.current = r.phase === 'over'; // a rematch lobby or a new room is not a finished match
       seen();
       setRoom(prev => {
         if (prev && prev.phase !== 'lobby' && r.phase === 'lobby') director.reset();
@@ -86,7 +88,7 @@ export default function App() {
     };
     rejoin();
     socket.on('connect', rejoin);
-    const onPop = () => { setPending(null); gen.current++; setEnded(null); setGallery(location.pathname === '/cards'); setCode(codeFromPath()); setRoom(null); director.reset(); rejoin(); };
+    const onPop = () => { overRef.current = false; setPending(null); gen.current++; setEnded(null); setGallery(location.pathname === '/cards'); setCode(codeFromPath()); setRoom(null); director.reset(); rejoin(); };
     window.addEventListener('popstate', onPop);
     return () => { socket.off('connect', rejoin); window.removeEventListener('popstate', onPop); };
   }, [director]);
@@ -97,6 +99,7 @@ export default function App() {
     const arm = () => { clearTimeout(timer); timer = setTimeout(() => { if (!socket.active) socket.connect(); }, 10_000); };
     const onErr = (err: Error) => {
       if (socket.active) return;
+      refusal.current = err.message;
       setError(err.message);
       arm();
     };
@@ -116,6 +119,8 @@ export default function App() {
     socket.on('connect', onUp); socket.on('disconnect', onDown);
     // One listener, registered at mount: retry the start that timed out while the server was away.
     const onConnect = () => {
+      const r = refusal.current; refusal.current = null;
+      if (r !== null) setError(e => (e === r ? null : e)); // only the refusal we showed, not other errors
       const pending = pendingStart.current;
       if (pending === null) return;
       setRetrying(false);
@@ -130,7 +135,7 @@ export default function App() {
 
   const go = (c: string) => { history.pushState(null, '', c ? `/r/${c}` : '/'); setCode(c); };
   const start = async (vsBot: boolean) => {
-    setPending(null); gen.current++;
+    setPending(null); gen.current++; overRef.current = false;
     setBusy(true); setError(null); setNotice(null);
     try { const c = await createRoom(name || 'Player', vsBot); go(c); }
     catch (e) {
@@ -154,13 +159,14 @@ export default function App() {
   if (ended) screen = <ServerEnded reason={ended} onHome={home} />;
   else if (gallery) screen = <Gallery onBack={() => { if (history.length > 1) closeGallery(); else { history.replaceState(null, '', '/'); setGallery(false); } }} />;
   else if (!code) screen = <Home name={name} setName={setName} onBot={() => start(true)} onCreate={() => start(false)} onCards={openGallery} busy={busy || retrying} error={error} notice={notice} />;
-  else if (!room && store.token(code) && !error) screen = <div className="center-screen mono dim">RECONNECTING…</div>;
+  else if (!room && store.token(code)) screen = <div className="center-screen mono dim" style={{ flexDirection: 'column', gap: 12 }}><span>RECONNECTING…</span>{error && <span className="error">{error}</span>}</div>;
   else if (!room) screen = <Join code={code} name={name} setName={setName} onJoin={join} error={error} busy={busy} />;
   else if (room.phase === 'lobby') screen = <Lobby room={room} onLeave={home} onCards={openGallery} />;
   else if (ds.shown) screen = <Game room={room} director={director} onHome={home} />;
   else screen = <div className="center-screen mono dim">LOADING MATCH…</div>;
 
   const inMatch = !gallery && !!code && !!room && room.phase !== 'lobby' && ds.shown;
-  const lost = down && inMatch && !ds.shown?.over;
-  return <><Stage>{screen}</Stage>{!inMatch && <FullscreenButton />}{lost && <ConnectionOverlay />}</>;
+  const lost = down && !!inMatch && !ds.shown?.over;
+  // `inert` takes the match out of the tab order and the accessibility tree while the overlay covers it.
+  return <><div style={{ display: 'contents' }} inert={lost}><Stage>{screen}</Stage>{!inMatch && <FullscreenButton />}</div>{lost && <ConnectionOverlay />}</>;
 }
