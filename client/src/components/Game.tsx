@@ -16,6 +16,7 @@ import { housePSrc } from '../art';
 import { Banners, FxLayer } from './Fx';
 import { MiniUnit } from './Unit';
 import { useStageScale } from './Stage';
+import { useFullscreen } from './FullscreenButton';
 
 type Sel = {
   uid: string; cardId: string;
@@ -93,6 +94,7 @@ export function Game({ room, director, onHome }: { room: RoomSnapshot; director:
   const [hover, setHover] = useState<{ cardId: string | null; power?: number; unit?: Unit } | null>(null);
   const [sending, setSending] = useState(false);
   const [passArm, setPassArm] = useState(false);
+  const fs = useFullscreen();
   const [rulesOpen, setRulesOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -389,6 +391,7 @@ export function Game({ room, director, onHome }: { room: RoomSnapshot; director:
           }}>{passLabel}</button>
         <div className="action-links">
           <button className="btn tiny ghost" onClick={() => setRulesOpen(true)}>Rules &amp; keywords</button>
+          {fs.available && <button className="btn tiny ghost" onClick={fs.enter}>Fullscreen</button>}
           <button className="btn tiny ghost" onClick={() => { if (confirm('Forfeit this match?')) socket.emit('game:forfeit'); }}>Forfeit</button>
         </div>
       </div>

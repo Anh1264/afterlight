@@ -12,8 +12,8 @@ const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'e
 const word = (n: number) => WORDS[n] ?? String(n);
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-export function Home({ name, setName, onBot, onCreate, onCards, busy, error }: {
-  name: string; setName: (n: string) => void; onBot: () => void; onCreate: () => void; onCards: () => void; busy: boolean; error: string | null;
+export function Home({ name, setName, onBot, onCreate, onCards, busy, error, notice }: {
+  name: string; setName: (n: string) => void; onBot: () => void; onCreate: () => void; onCards: () => void; busy: boolean; error: string | null; notice?: string | null;
 }) {
   const [modal, setModal] = useState<'link' | 'first' | null>(null);
   const pvp = new URLSearchParams(location.search).get('pvp') === '1';
@@ -30,10 +30,11 @@ export function Home({ name, setName, onBot, onCreate, onCards, busy, error }: {
           <input value={name} maxLength={18} placeholder="Aiden" onChange={e => setName(e.target.value)} />
         </label>
         <div className="home-buttons">
-          <button className="btn dark big" disabled={busy} onClick={playBot}>Play vs Bot</button>
+          <button className="btn dark big" disabled={busy} onClick={playBot}>{busy ? 'Connecting...' : 'Play vs Bot'}</button>
           {pvp && <button className="btn big" disabled={busy} onClick={onCreate}>Invite a friend</button>}
         </div>
         {error && <span className="error">{error}</span>}
+        {notice && <p className="notice" role="status">{notice}</p>}
         <div className="home-links">
           <button className="link" onClick={() => setModal('link')}>How to play →</button>
           <button className="link" onClick={onCards}>All cards →</button>

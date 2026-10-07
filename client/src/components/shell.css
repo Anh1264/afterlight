@@ -1,0 +1,29 @@
+.gate { align-content: safe center; position: fixed; inset: 0; overflow: auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 20px 32px; padding: 20px; box-sizing: border-box; background: var(--paper); color: var(--ink); font-family: var(--font); }
+.gate-copy { flex: 1 1 300px; max-width: 420px; display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+/* Brand wordmark: the .logo class from styles.css, scaled down. */
+.logo.gate-logo { font-size: min(72px, 20vw); line-height: .85; }
+.gate-pitch, .gate-desktop { margin: 0; font-size: 16px; line-height: 1.4; }
+.gate-desktop { font-weight: 700; }
+.gate-actions { display: flex; flex-direction: column; gap: 8px; align-self: stretch; }
+.gate-btn { min-height: 48px; border: 1.5px solid var(--ink); background: var(--ink); color: #fff; border-radius: 999px; font: 700 16px var(--font); cursor: pointer; padding: 0 24px; }
+.gate-url { min-height: 44px; box-sizing: border-box; font: 14px var(--mono); padding: 0 10px; border: 1.5px solid var(--line); border-radius: 8px; width: 100%; }
+.gate-try { min-height: 44px; padding: 0 4px; border: 0; background: none; font: 14px var(--font); color: var(--dim); text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
+/* og.jpg carries the wordmark on its left; show only the card fan on the right. */
+.gate-img { flex: 0 1 300px; width: 300px; max-width: 100%; aspect-ratio: 1 / 1; object-fit: cover; object-position: 100% 50%; border-radius: 10px; box-shadow: 0 10px 30px rgba(20, 20, 30, .15); }
+.gate-hint { margin: 0; font-size: 14px; line-height: 1.4; color: var(--dim); }
+@media (max-height: 450px) { .gate-img { flex-basis: 220px; width: 220px; } .logo.gate-logo { font-size: 56px; } }
+
+.fs-btn { position: fixed; top: 4px; right: 4px; z-index: 50; width: 44px; height: 44px; border: 1.5px solid var(--ink); background: rgba(255,255,255,.85); border-radius: 999px; font: 700 20px var(--font); cursor: pointer; padding: 0; opacity: .7; }
+.fs-btn:hover { opacity: 1; }
+
+.shell-msg { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; text-align: center; padding: 40px; }
+.shell-msg h1 { margin: 0; font-size: 44px; }
+.shell-msg p { margin: 0; font-size: 22px; max-width: 760px; line-height: 1.4; }
+.shell-msg .shell-actions { display: flex; gap: 20px; align-items: center; }
+.crash { position: fixed; inset: 0; background: var(--paper); color: var(--ink); font-family: var(--font); }
+.crash .shell-msg h1 { font-size: 32px; }
+.crash .shell-msg p { font-size: 18px; }
+
+.notice { margin: 0; padding: 8px 14px; max-width: 640px; font-size: 20px; line-height: 1.35; font-weight: 500; color: var(--ink); background: rgba(14, 14, 18, .05); border-left: 3px solid var(--dim); border-radius: 4px; }
+.conn-overlay { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; background: rgba(244, 244, 246, .82); backdrop-filter: blur(2px); cursor: wait; }
+.conn-overlay p { margin: 0; padding: 14px 24px; border-radius: 999px; background: var(--ink); color: #fff; font: 600 18px var(--font); }
