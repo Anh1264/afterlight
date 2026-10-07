@@ -176,7 +176,8 @@ describe('effect registry: the check fails for a bad id (probe card injected int
 
 // ================================================================ the hard-coded list agrees with engine.ts
 describe('effect registry: the hard-coded dispatch list agrees with engine.ts (so it cannot go stale unnoticed)', () => {
-  const src = readFileSync(fileURLToPath(new URL('./engine.ts', import.meta.url)), 'utf8');
+  // Normalise CRLF (Git for Windows checkouts) so the '\n}\n' search in bodyOf() still matches.
+  const src = readFileSync(fileURLToPath(new URL('./engine.ts', import.meta.url)), 'utf8').replace(/\r\n/g, '\n');
   /** The text of a top-level function: from `function name(` to the first closing brace in column 0. */
   function bodyOf(name: string): string {
     const start = src.indexOf(`function ${name}(`);
