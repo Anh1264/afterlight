@@ -285,7 +285,7 @@ export function targetSpecFor(g: BoardLike, p: PIdx, eff: EffId | undefined): Ta
     case 'shield': return ally(u => !u.shield, 1, n1, n1 > 1 ? `Give Shield to up to ${n1} allied units` : 'Give an allied unit Shield');
     case 'shieldboost': return ally(() => true, 1, 1, `Give an allied unit Shield and +${n1}`);
     case 'givegrow': if (a1) return ally(u => !u.grow, 1, n1, `Give Grow to up to ${n1} allied units`); break;
-    case 'copyally': return ally(u => u.power <= n1, 1, 1, `Copy an allied unit with ${n1} or less power`);
+    case 'copyally': return ally(u => u.power <= n1, 1, 1, `Choose an allied unit with ${n1} or less power to Echo`);
     case 'sacburn': return ally(() => true, 0, 1, 'You may Sacrifice an allied unit to Burn the strongest enemy');
     case 'sacdraw': return ally(u => u.power <= 3, 0, 1, 'You may Sacrifice a unit with 3 or less power to draw 2');
     case 'rowburn': return opp.units.length ? { kind: 'row', side: 'enemy', prompt: `Choose an enemy row: Burn ${n1} to every unit there` } : { kind: 'none' };

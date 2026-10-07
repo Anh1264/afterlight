@@ -2,7 +2,7 @@
 import { CARDS } from './cards';
 import {
   Action, GameState, PIdx, Row, TargetSpec, Unit, activeEffect, clone, doPlay, endTurn,
-  legalRows, score, targetSpecFor,
+  legalRows, score, targetSpecFor, totals, validate,
 } from './engine';
 
 type Play = Extract<Action, { type: 'play' }>;
@@ -81,10 +81,57 @@ export function bestPlay(g: GameState, me: PIdx): { v: number; play: Play } | nu
   return best;
 }
 
+const other = (p: PIdx): PIdx => (p === 0 ? 1 : 0);
+
+export const R1_TAKE = { MAX_OPP_CARDS_ON_BOARD: 1, MAX_CARDS: 2, CARD_SLACK: 1 } as const;
+
+function lead(g: GameState, me: PIdx): number {
+  const t = totals(g);
+  return t[me] - t[other(me)];
+}
+
+/** Best single legal play after which `me` is strictly ahead on totals(): smallest winning margin first,
+ *  non-Legends before Legends, then candidatePlays order. */
+export function bestTakingPlay(g: GameState, me: PIdx): Play | null {
+  let best: { play: Play; margin: number; legend: boolean } | null = null;
+  for (const play of candidatePlays(g, me)) {
+    if (validate(g, me, play) !== null) continue;
+    const inst = g.players[me].hand.find(c => c.uid === play.uid);
+    if (!inst) continue;
+    const g2 = clone(g);
+    doPlay(g2, me, play, []);
+    endTurn(g2, me, []);
+    const margin = lead(g2, me);
+    if (margin <= 0) continue;
+    const legend = CARDS[inst.cardId].tier === 'LEGEND';
+    if (!best || margin < best.margin || (margin === best.margin && best.legend && !legend)) {
+      best = { play, margin, legend };
+    }
+  }
+  return best ? best.play : null;
+}
+
+/** Opponent has passed: cards `me` needs to get strictly ahead. 1 if bestTakingPlay exists, else greedy bestPlay steps up to max. */
+export function takeRoundCost(g: GameState, me: PIdx, max: number): { cards: number; first: Play } | null {
+  const one = bestTakingPlay(g, me);
+  if (one) return { cards: 1, first: one };
+  const cur = clone(g);
+  let first: Play | null = null;
+  for (let cards = 1; cards <= max; cards++) {
+    const bm = bestPlay(cur, me);
+    if (!bm || validate(cur, me, bm.play) !== null) return null;
+    if (!first) first = bm.play;
+    doPlay(cur, me, bm.play, []);
+    endTurn(cur, me, []);
+    if (lead(cur, me) > 0) return { cards, first };
+  }
+  return null;
+}
+
 export function decide(g: GameState, me: PIdx, rnd: () => number = Math.random): Action {
-  const p = g.players[me], o = g.players[me === 0 ? 1 : 0];
+  const p = g.players[me], o = g.players[other(me)];
   if (!p.hand.length) return { type: 'pass' };
-  const diff = score(p) - score(o);
+  const diff = lead(g, me);
   const r = g.round;
   const mustWin = o.wins === 1;
   const bm = bestPlay(g, me);
@@ -93,6 +140,10 @@ export function decide(g: GameState, me: PIdx, rnd: () => number = Math.random):
   if (o.passed) {
     if (diff > 0) return { type: 'pass' };
     if (r === 3 || mustWin) return play;
+    if (r === 1 && o.units.filter(u => !u.token).length <= R1_TAKE.MAX_OPP_CARDS_ON_BOARD) {
+      const c = takeRoundCost(g, me, R1_TAKE.MAX_CARDS);
+      if (c && p.hand.length - c.cards >= o.hand.length - R1_TAKE.CARD_SLACK) return c.first;
+    }
     if (diff + bm.v > 0 && p.hand.length - 1 >= o.hand.length) return play;
     if (diff + bm.v > 0 && r === 1 && rnd() < 0.5) return play;
     return { type: 'pass' };

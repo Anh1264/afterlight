@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import type { Socket } from 'socket.io-client';
 import { STARTERS, validateDeck, type House } from '../shared/cards';
 import { BAD_REQUEST, GENERIC_ERROR, TURN_SECONDS, type GameMsg, type RoomSnapshot } from '../shared/protocol';
+import { totals } from '../shared/engine';
 import { mulberry, randomDeck } from '../shared/sim';
 import { DEFAULT_LIMITS } from './limits';
 import type { ServerOptions } from './app';
@@ -824,7 +825,14 @@ describe('2b (moved) release() leaves nothing behind', () => {
 });
 
 describe('2b (moved) failRoom after the match-ending move', () => {
-  /** Arm `arm()` when `ready(g)` holds; the human never plays a card, so it is never ahead. */
+  /**
+   * Drive a bot match to the last move and arm the view throw just before it.
+   * 'handler': the human's own pass ends the match. 'timer': the BOT's next move, fired by its timer, ends the match.
+   * The bot passes (rather than plays) once it is strictly ahead with the human passed, so that is the position we wait for:
+   * human passed, bot not passed, bot has a win and leads on totals. The bot now contests round 1 (DM-1), so it holds
+   * a win from round 1 and passes first in round 2; the human then plays one card to take round 2 (1-1), and in round 3
+   * passes so the bot must play a card to get ahead, after which its next move is the match-ending pass.
+   */
   async function untilEndedByThrow(mode: 'handler' | 'timer') {
     let armed = false, thrown = false;
     const { url, logs } = await boot({
@@ -834,8 +842,9 @@ describe('2b (moved) failRoom after the match-ending move', () => {
     for (let attempt = 0; attempt < 20; attempt++) {
       const m = await bot(url);
       let g = m.game;
-      for (let i = 0; i < 12; i++) {
+      for (let i = 0; i < 20; i++) {
         const me = g.view.me;
+        const mine = g.view.players[me];
         const opp = g.view.players[me === 0 ? 1 : 0];
         if (mode === 'handler' && g.view.round >= 2 && opp.passed && opp.wins >= 1) {
           // my pass ends the round, the bot has a win and at least ties it: the match is over
@@ -843,11 +852,16 @@ describe('2b (moved) failRoom after the match-ending move', () => {
           expect(await ask(m.s, 'game:action', { type: 'pass' })).toEqual({ error: GENERIC_ERROR });
           return { url, logs, s: m.s };
         }
-        if (mode === 'timer' && g.view.round >= 2 && g.view.players[me].passed && !opp.passed && opp.wins >= 1) {
-          armed = true; // the bot's next move (a pass, once it is ahead) ends the match
+        if (mode === 'timer' && g.view.round >= 2 && mine.passed && !opp.passed && opp.wins >= 1
+            && totals(g.view)[me === 0 ? 1 : 0] > totals(g.view)[me]) {
+          armed = true; // the bot is ahead and I have passed: its next move is a pass, which ends the match
           return { url, logs, s: m.s };
         }
-        await ask(m.s, 'game:action', { type: 'pass' });
+        if (!mine.passed) {
+          // Take round 2 with one card when the bot passed first, so round 3 is the deciding round. Otherwise pass.
+          const takeR2 = mode === 'timer' && g.view.round === 2 && opp.passed && opp.wins === 1 && mine.wins === 0 && mine.units.length === 0;
+          await ask(m.s, 'game:action', takeR2 ? firstSimplePlay(g.view) : { type: 'pass' });
+        }
         g = await next<GameMsg>(m.s, 'game', x => x.ended !== undefined || x.view.over || isMyTurn(x) || (mode === 'timer' && x.view.players[x.view.me].passed), 3000)
           .catch((e: unknown) => { throw new Error(`while driving the match to its last move: ${String(e)}`); });
         if (g.ended || g.view.over) break;
