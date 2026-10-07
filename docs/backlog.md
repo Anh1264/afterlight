@@ -11,7 +11,7 @@ Spec and design: docs/specs/demo-mvp.md. Feature PRs don't edit this file; the o
 | 1 Test gates | T1, T4, T2 | done ([#1](https://github.com/Anh1264/afterlight/pull/1), merged Oct 7); Railway's Wait for CI is Aiden's switch |
 | 2a Server hardening | P0-1, N4, DM-2, DM-8 | spec (design challenge done Oct 6) |
 | 2b Abuse limits and logs | P0-4, DM-6 | spec |
-| 3 Bot Round 1 and card text | DM-1, DM-3 | spec |
+| 3 Bot Round 1 and card text | DM-1, DM-3 | build (bot rule done; card text in progress) |
 | 4 Truth on screen and the demo surface | P0-3, DM-4 | build (review: CHANGES, fixes in progress) |
 | 5 Phones, link preview and recovery | DM-5, DM-7, C4 | spec |
 
@@ -19,7 +19,7 @@ Spec and design: docs/specs/demo-mvp.md. Feature PRs don't edit this file; the o
 | --- | --- | --- | --- | --- |
 | DM-1 | bot | S | The bot wins Round 1 against an immediate pass in at least 98% of 2,000 seeds (85% when the human plays their strongest card first) (it concedes 55.8% today), and judges who is ahead with the engine's totals, First Light included (bot.ts uses raw `score()`). | spec |
 | DM-2 | server | S | No turn clock in bot matches: today a 60 s timeout passes the whole round while a newcomer reads their hand. Idle bot matches end after 15 minutes instead. | spec |
-| DM-3 | engine | S | Card text matches the engine for Drake-07 and Lattice, both Legends in the Echo starter. Text only, plus their README rows. | spec |
+| DM-3 | engine | S | Card text matches the engine for Drake-07 and Lattice (Legends in the Echo starter), plus Replicator, Afterimage and Wire Hound, found during the build. Text only, plus their README rows and the Echo keyword tooltip match. | build |
 | DM-4 | client | M | Demo surface: Play vs Bot is the only home action (PvP at `/?pvp=1`), deck builder hidden, no ART PENDING, PLAYTEST label, How to play on the first click, Give feedback link, rules numbers from shared constants. | spec |
 | DM-5 | client | S | Phones and tablets get a "made for desktop" screen (Copy link, Try anyway, no art preload). Link-preview tags (og/twitter), a fullscreen button, and the device class sent in the socket handshake. | spec |
 | DM-6 | server | S | One single-line JSON log per funnel event (no tokens, IPs or names). Build SHA and since-boot counters on `/health`. | spec |
@@ -77,7 +77,11 @@ Spec and design: docs/specs/demo-mvp.md. Feature PRs don't edit this file; the o
 | C7 | client | M | Accessibility: keyboard play, focus states, ARIA labels, and houses told apart by more than colour. | todo |
 | C8 | client | S | The `.game` root is keyed on the shake counter (Game.tsx:260), so every hit of 4 or more remounts the whole board: framer-motion state resets and the hand's entry animation replays. Shake a wrapper or use an animation instead of a key change. Found in the PR 1 review. | todo |
 | C9 | client | S | Rules numbers still hard-coded outside PR 4's files: Gallery.tsx:7 and :19 ("MAX 1/2/3", "Legend ×1, Rare ×2, Common ×3") should read `DECK_RULES`, and Game.tsx "WAITING 60s" repeats the server's drop grace (PvP only). Found in the PR 4 review. | todo |
+| C10 | client | S | First Light is hard to see: at 1366x650 the divider chip renders at about 8 px in dim grey, so the holder's total is 2 more than its rows add up to with no visible reason. Show the bonus next to the holder's total in Round 1, or make the chip legible. Found in the PR 4 ux pass. | todo |
+| C11 | client | S | The first-visit How to play shows 17 keywords at about 10 px beside the 5 steps: a wall of text for a first impression. Consider showing only the steps there and pointing to the in-game "Rules & keywords". Found in the PR 4 ux pass. | todo |
+| C12 | client | S | At inner 1366x650 the hand cards are clipped at the bottom of the stage (names readable, ability text cut). Check at Friday's ux pass; fix if a card's text can't be read on hover. Found in the PR 4 ux pass. | todo |
 | E5 | engine | S | engine.ts:104 seeds with `Math.random` when no seed is passed, a gap against invariant 1 (determinism). Require a seed, or move the default to the server. Found in the demo design challenge. | todo |
+| E6 | engine | S | Null-9 and Puppeteer text leaves out what seize does at the edges: the taken unit loses Poison, and moves to the other row when its own row is full (engine.ts:555-565). Text only. Found by game-designer during PR 3. | todo |
 | O5 | ops | M | Staging environment: a Railway environment that deploys from a `staging` branch. Today production is the only place the full stack runs. | todo |
 | O6 | ops | S | Version releases: package.json still says 0.1.0 and there are no git tags. Tag each deploy (pairs with the build SHA in O3). | todo |
 | O7 | ops | S | Bump `concurrently` (2 critical audit issues in `shell-quote`, dev-only). | todo |

@@ -24,7 +24,7 @@ Option 1, overridable with `TRUST_PROXY=x-real-ip|none`:
 - Open sockets per IP (40) are counted from live sockets, not with a counter.
 - A cap of 2,000 open sockets and 10,000 rooms applies whatever `LIMIT_PER_IP` says.
 - The IP is held in memory only. It is never logged or shown on `/health`.
-- Aiden keeps the custom domain's DNS record "DNS only". A proxying CDN would make every visitor look like a few IPs.
+- No custom domain this week (Aiden, Oct 6). If one is added later, its DNS record stays "DNS only": a proxying CDN would make every visitor look like a few IPs.
 
 Production check, Thu after PR 2b deploys and again Mon at rehearsal. Close other AFTERLIGHT tabs first.
 - `scripts/abuse.ts spoof` opens 41 sockets one at a time, each sending a different `X-Real-IP`. It waits up to 5 s for `connect` or `connect_error` on each, prints how many connected, then closes them all.

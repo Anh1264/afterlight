@@ -29,7 +29,7 @@ A stranger clicks Aiden's link on a computer and wants to try a new card game fo
    - PvP reachable at `/?pvp=1`.
    - "ART PENDING" removed.
    - The home label reads "PLAYTEST".
-   - Public URL on a custom domain.
+   - Public URL: Railway's `*.up.railway.app` domain. Aiden dropped the custom domain for this week on Oct 6; it can be added later.
    - Fewer than 50 players expected, so the room cap is a backstop against scripts, not a traffic limit.
    - No third-party error reporter this week.
 8. **One Gate 1 covers the whole demo.**
@@ -253,9 +253,9 @@ ux-reviewer screenshots:
 ## Week plan
 | Day | Work | Aiden |
 | --- | --- | --- |
-| **Tue Oct 6** | Gate 1 (done). PR 1 built tonight. Architect designs PRs 2-5, and red-team gets one pass at the design. | Railway: App Sleeping off, healthcheck `/health`, restart On Failure. Add the custom domain in Railway and set its DNS record (DNS and certificate can take hours). |
+| **Tue Oct 6** | Gate 1 (done). PR 1 built tonight. Architect designs PRs 2-5, and red-team gets one pass at the design. | Railway: Serverless off (formerly App Sleeping), healthcheck `/health`, restart On Failure. Add the custom domain in Railway and set its DNS record (DNS and certificate can take hours). |
 | **Wed Oct 7** | PR 1 merges in the morning. PRs 2a, 3 and 4 are built in parallel worktrees; PR 5 starts in the afternoon on its parts that need neither PR 2 nor PR 4. | Merge PR 1 and the planning docs. Check Actions is enabled; turn on Wait for CI. |
-| **Thu Oct 8** | PRs 3, 4 and 2a merge by 12:00, 2b by 18:00. PR 5 is built. | Merge PRs 3, 4, 2a and 2b; run the spoof check after 2b deploys. Domain live. Send the feedback form URL. |
+| **Thu Oct 8** | PRs 3, 4 and 2a merge by 12:00, 2b by 18:00. PR 5 is built. | Merge PRs 3, 4, 2a and 2b; run the spoof check after 2b deploys. Send the feedback form URL. |
 | **Fri Oct 9** | PR 5 merges by noon. ux-reviewer plays main at inner 1366x650, 1280x600, 1440x900 and both phone sizes, including the cold-load time. Feature complete at end of day. | Merge PR 5. Play 3 full matches on prod in a fresh browser profile. |
 | **Sat-Sun Oct 10-11** | Buffer: /bug only for Blocker/Major issues from Friday. No new scope. | Merge if available; otherwise buffer fixes merge Mon 09:00-12:00. |
 | **Mon Oct 12** | Merges stop at 12:00. Rehearsal 13:00-17:00 on prod (release criteria 1-6). | Rehearsal; go/no-go at 17:00. |
@@ -291,8 +291,8 @@ Parallel worktrees (file ownership):
 ## Only Aiden can do these
 | When | What | It unblocks |
 | --- | --- | --- |
-| Tue Oct 6 | Railway: App Sleeping off (in-memory matches die when it sleeps), healthcheck path `/health`, restart policy On Failure, and note its max-retries limit on our plan (after PR 2 the server exits on an unexpected crash so Railway restarts it). Check the plan's log retention. | Stability, the metric |
-| Tue Oct 6 | Add the custom domain in Railway and the DNS record at the registrar. | PR 5's link preview (`og:image` needs the final absolute URL) |
+| Tue Oct 6 | Railway: Serverless off (formerly App Sleeping) (in-memory matches die when it sleeps), healthcheck path `/health`, restart policy On Failure, and note its max-retries limit on our plan (after PR 2 the server exits on an unexpected crash so Railway restarts it). Check the plan's log retention. | Stability, the metric |
+| Tue Oct 6 | Check the service has a public Railway domain (Settings, Networking) and send it. No custom domain this week. | PR 5's link preview (`og:image` needs the final absolute URL) |
 | Wed Oct 7 | Merge PR 1 and the planning-docs PR. Check GitHub Actions is enabled. Switch on Railway's Wait for CI and confirm one push shows WAITING. | Every later PR |
 | Wed-Fri | Review and merge PRs (Gate 2). | Every item |
 | Thu Oct 8 | Create the feedback form (Tally or Google Forms, 3-5 questions) and send the URL. | PR 4's feedback link |
@@ -302,7 +302,7 @@ Parallel worktrees (file ownership):
 
 ## Open questions
 1. Can Aiden merge on Sat-Sun Oct 10-11? Default if not: buffer fixes merge Mon 09:00-12:00.
-2. The custom domain's name. It's needed by Thu Oct 8 for the link preview.
+2. Resolved Oct 6: no custom domain this week. The demo uses the Railway URL, and the link preview reads it from `RAILWAY_PUBLIC_DOMAIN` at build time.
 3. The feedback form URL, by Thu Oct 8.
 4. If the production spoof check (ADR 0002) fails on Thu, one script could make the demo refuse new visitors (it cannot crash it). Posting anyway is Aiden's call at the Mon go/no-go.
 
@@ -345,6 +345,16 @@ Architect, Tue 2026-10-06. Designed against PR 1 as built (worktree `t1-test-gat
 **Orchestrator rulings (Tue Oct 6):**
 - Issues 1-7: accepted as written. PR 4 adds `RULES.ROUNDS` / `RULES.WINS_NEEDED`. PR 2 owns `scripts/abuse.ts`.
 - Issue 8: PR 2 updates server/CLAUDE.md's validation line in the same PR, so the docs match the code.
+
+**Orchestrator rulings after the PR 4 review and ux pass (Tue Oct 6):**
+- **PR 4 c1, extended: the pass button names a match result.** When passing now ends the match, it reads PASS · WIN MATCH, PASS · LOSE MATCH or PASS · DRAW MATCH instead of the round label. The ux pass found that at 0-1 a Round 2 tie reads PASS · TIE ROUND and then ends the match as DEFEAT, because a tied round gives both players a win (engine.ts:646).
+  - `shared/engine.ts` exports a pure `matchWinner(wins: readonly [number, number], round: number): PIdx | 'draw' | null` (null: the match goes on), and `endRound` uses it, so the rule lives in one place.
+  - `shared/pass.ts`: `RoundBoard` players gain `wins: number`, and `passMatch(b, me): 'win' | 'lose' | 'draw' | null` combines `passPromise` with `matchWinner`. Null while the opponent is still playing, or when the match goes on.
+  - Game.tsx: the match label wins over the round label. Only a win is styled good.
+- **PR 4 c7, extended: closing How to play in any way marks it seen,** whether it was opened from the Home link or by the first Play vs Bot click, via "Got it" or the backdrop. Only the first-visit "Got it" continues to the lobby. Home keeps one modal state, `'link' | 'first' | null`.
+- **`client/src/prefs.ts` (new, PR 4)** holds `SEEN_RULES_KEY` and its storage helpers. e2e/helpers.ts re-exports the key, so the client and the tests can't drift apart.
+- **PR 3's text fix widened to every Echo-starter card whose text says something the engine doesn't do.** game-designer found three more: Replicator and Afterimage (Echo starter) say "copy", but the engine makes a plain Echo token that copies only power, without Grow, Guard or Shield (engine.ts:397, :540-544); Wire Hound (not a starter) has Lattice's bug, "Echo tokens" where the engine boosts every token (engine.ts:420). Each gets a text test like Drake-07's. The Echo keyword tooltip also matches `token`, so "Your tokens gain 2" still explains what a token is. Null-9 and Puppeteer only leave out edge cases (a seized unit loses Poison; it moves rows when its row is full), so they go to the backlog (E6).
+- **Deferred to the backlog:** the First Light chip's legibility at 1366 (C10), the first-visit modal's keyword column (C11), hand cards clipped at 1366x650 (C12, for Friday's ux pass), and the rules literals outside PR 4's files (C9).
 
 ### Approach
 - **PR 2** ships as 2a (crash-proofing, seats, DM-2, DM-8) and then 2b (abuse limits, funnel log, `/health` counters).
@@ -483,7 +493,7 @@ export class FixedWindow { constructor(windowMs: number, max: number); can(key: 
   - `LIMIT_PER_IP=off` sets both per-IP limits to `Infinity`. The per-socket window, `maxSockets` and `maxRooms` stay.
   - Limits key on `ipKey(ip)`, so an IPv6 host can't dodge them by rotating through its /64.
   - **Unverified:** whether Railway overwrites a client-sent `X-Real-IP`. After 2b deploys, `scripts/abuse.ts spoof` opens 41 sockets, each with a different `X-Real-IP`, and passes if one is refused (ADR 0002).
-  - The custom domain's DNS must be "DNS only" (no CDN proxy).
+  - No custom domain this week. If one is added later, its DNS must be "DNS only" (no CDN proxy).
 - **How tests avoid the limits:**
   - Server tests boot one server per test with `trustProxy: 'x-real-ip'`, and set each socket's IP with `extraHeaders: { 'x-real-ip': '10.0.0.N' }`.
   - e2e uses 1 worker with local trust `'none'`, and makes under 10 rooms/min.
@@ -681,7 +691,7 @@ Game.tsx uses it in three places:
 - Vite 8 replaces `%VITE_*%` in HTML (checked: `htmlEnvHook` in node_modules/vite).
 - `vite.config.ts` adds `define: { 'import.meta.env.VITE_PUBLIC_ORIGIN': JSON.stringify(process.env.VITE_PUBLIC_ORIGIN ?? (process.env.RAILWAY_PUBLIC_DOMAIN ? 'https://' + process.env.RAILWAY_PUBLIC_DOMAIN : 'http://localhost:3001')) }`.
 - `playwright.config.ts` adds `VITE_PUBLIC_ORIGIN: baseURL` to `webServer.env`, so the e2e build points `og:image` at the server under test (port 3101), not 3001.
-- Aiden sets `VITE_PUBLIC_ORIGIN=https://<domain>` in Railway. Service variables reach the build (verified in Railway docs). `RAILWAY_PUBLIC_DOMAIN` is only a fallback: which domain it holds once a custom domain exists is unverified.
+- No custom domain this week (Aiden, Oct 6), so the build takes `RAILWAY_PUBLIC_DOMAIN` (Railway's `*.up.railway.app` domain) and Aiden sets nothing. Unverified: that Railway exposes it during the build. After PR 5's first production deploy, check the og URLs in the served HTML; if they say localhost, Aiden sets `VITE_PUBLIC_ORIGIN=https://<railway domain>` and redeploys. `VITE_PUBLIC_ORIGIN` is also how a custom domain is added later.
 - `/r/ABCDE` gets the same HTML through the SPA fallback (server/index.ts:60).
 - `client/public/og.jpg` is a 1200x630 JPEG. Capture it with `page.screenshot({ type: 'jpeg', quality: 85, clip: { x, y, width: 1200, height: 630 } })` of a mid-match board at a 1600x900 viewport (scale 1). Aiden approves it in the PR.
 
@@ -734,8 +744,8 @@ Game.tsx uses it in three places:
 | --- | --- |
 | 2a | `server/app.ts` n, `server/index.ts`, `server/limits.ts` n, `server/log.ts` n, `shared/protocol.ts`, `server/CLAUDE.md` (validation line). Tests: `server/testkit.ts` n, `server/app.test.ts` n, `server/log.test.ts` n, `shared/protocol.test.ts` n, `e2e/reconnect.spec.ts` n |
 | 2b | `server/app.ts`, `server/limits.ts`, `server/log.ts`, `scripts/abuse.ts` n, `tsconfig.json` (+`scripts`). Tests: `server/abuse.test.ts` n, `server/limits.test.ts` n, `server/funnel.test.ts` n |
-| 3 | `shared/bot.ts`, `shared/cards.ts` (:140-141, :179-180 only), `README.md` (:170, :173). Tests: `shared/bot.test.ts` n, `shared/__snapshots__/bot.test.ts.snap` n, `shared/cards-text.test.ts` n |
-| 4 | `shared/pass.ts` n, `shared/cards.ts` (`RULES` :381-387 only), `shared/engine.ts` (:651), `client/src/components/Screens.tsx`, `Game.tsx`, `Card.tsx`, `client/src/styles.css`, `client/src/links.ts` n, `e2e/helpers.ts`. Tests: `shared/pass.test.ts` n, `e2e/demo-surface.spec.ts` n |
+| 3 | `shared/bot.ts`, `shared/cards.ts` (text of Drake-07, Lattice, Afterimage, Wire Hound and Replicator, plus the Echo keyword `match` at :399; nothing in `RULES`), `README.md` (those five rows). Tests: `shared/bot.test.ts` n, `shared/__snapshots__/bot.test.ts.snap` n, `shared/cards-text.test.ts` n |
+| 4 | `shared/pass.ts` n, `shared/cards.ts` (`RULES` :381-387 only), `shared/engine.ts` (`endRound` :643-656 and the new `matchWinner`), `client/src/components/Screens.tsx`, `Game.tsx`, `Card.tsx`, `client/src/styles.css`, `client/src/links.ts` n, `client/src/prefs.ts` n, `e2e/helpers.ts`. Tests: `shared/pass.test.ts` n, `e2e/demo-surface.spec.ts` n |
 | 5 | `client/index.html`, `vite.config.ts`, `playwright.config.ts` (one env line), `client/src/main.tsx`, `App.tsx`, `net.ts`, `client/src/device.ts` n, `client/src/recovery.ts` n, `components/PhoneGate.tsx` n, `ServerEnded.tsx` n, `ErrorBoundary.tsx` n, `FullscreenButton.tsx` n, `components/shell.css` n, `client/public/og.jpg` n. Tests: `client/src/device.test.ts` n, `client/src/recovery.test.ts` n, `e2e/test-server.ts` n, `e2e/server-proc.ts` n, `e2e/phone.spec.ts` n, `e2e/preview.spec.ts` n, `e2e/recovery.spec.ts` n |
 
 Overlaps:
@@ -842,7 +852,7 @@ Merge order:
 | 4 | A new Round 1 exploit | No pre-approved lever: a gate of 2 opponent cards drops first-seat wins to 38.4%, near the rejected rule. A reported exploit goes through /bug with a new measurement. c1b pins the strongest-card line. |
 | 5 | The c3 snapshot is missing in CI | qa commits the `.snap` with the tests-first commit, and review checks it. |
 | 6 | Fullscreen or clipboard is flaky in headless | Stubs and permissions in tests; the real thing on Aiden's devices on Mon. |
-| 7 | The og URL is wrong, or the preview is cached early | Set `VITE_PUBLIC_ORIGIN` before PR 5 deploys; the e2e build sets it to the server under test; release c4; never paste the link earlier. |
+| 7 | The og URL is wrong, or the preview is cached early | Check the og URLs in the served HTML after PR 5's first deploy (set `VITE_PUBLIC_ORIGIN` if they say localhost); the e2e build sets it to the server under test; release c4; never paste the link earlier. |
 | 8 | The restart e2e is flaky (port reuse, signals, tsx boot) | Spawn `node --import tsx` directly, wait for `exit` before respawning, fail if the new child exits, poll `/health` for 20 s, one port per test, 1 worker. |
 | 9 | An exception escapes the guarded paths | The process logs it and exits 1. Railway's On Failure policy restarts it in seconds (at most 10 restarts on the default policy), and players see RESTARTED. Each boot writes a `server_start` line, so the "0 process exits" guardrail is countable. |
 | 10 | Old clients see a frozen board on a server-ended match, between the 2a and PR 5 deploys | The toast explains it, and there is no public link before PR 5. |
