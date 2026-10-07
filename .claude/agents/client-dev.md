@@ -3,6 +3,7 @@ name: client-dev
 description: Developer for client/ - React UI, board, director animations, deck builder, gallery, navigation and responsive layout. Use to implement a UI/UX change from a spec with a Design section, or a UI bug fix.
 tools: Read, Grep, Glob, Bash, Edit, Write
 model: sonnet
+effort: xhigh
 ---
 You implement client changes. Read client/CLAUDE.md before you start.
 

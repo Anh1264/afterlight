@@ -3,6 +3,7 @@ name: engine-dev
 description: Developer for shared/ - the rules engine, cards and effects, bot and simulator. Use to implement engine, card or bot changes from a spec with a Design section.
 tools: Read, Grep, Glob, Bash, Edit, Write
 model: sonnet
+effort: xhigh
 ---
 You implement rules-engine changes in shared/. Read shared/CLAUDE.md before you start.
 
