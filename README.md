@@ -37,7 +37,7 @@ Each side has a **Front** row and a **Back** row, with up to 6 units in each. An
 
 - **Guard** only protects your Back row while the Guard unit sits in your Front row.
 - **Rally** boosts only the row it's played into.
-- **Echo** tokens appear in the row opposite the card that made them.
+- **Echo** tokens appear in the row opposite the card that made them, unless the card's text names a different unit or row.
 - **Last Words** tokens appear in the row the unit died in.
 - Some cards hit a whole row at once, so stacking everything in one row is risky.
 
@@ -167,14 +167,14 @@ Floods both rows with tokens, then steals and shoves enemy units. Too wide to Bu
 | Card | Rarity | Type | Power | Ability |
 | --- | --- | --- | --- | --- |
 | Null-9 *(masked relay)* | Legend | Unit | 5 | Deploy: Take control of an enemy unit with 4 or less power. |
-| Drake-07 *(drill drake)* | Legend | Unit | 3 | Deploy: Summon two Echo 3 in your Front row. |
+| Drake-07 *(drill drake)* | Legend | Unit | 3 | Echo 3. Summon a 3-power Echo in your other row. Deploy: Summon a 3-power Echo in your Front row. |
 | Aiden *(iron-hand)* | Legend | Unit | 6 | Deploy: Duel an enemy unit. Resolve: Aiden gains +3 first. |
 | Mirrorjack *(the copycat)* | Legend | Unit | 3 | Deploy: Choose an enemy unit. If it has more power, this becomes its power. |
-| Lattice *(the swarm mother)* | Legend | Unit | 4 | Deploy: Your Echo tokens gain 2. |
+| Lattice *(the swarm mother)* | Legend | Unit | 4 | Deploy: Your tokens gain 2. |
 | Oracle Prime *(the all-seeing)* | Legend | Unit | 4 | Deploy: Draw a card. Resolve: Draw 2 instead. |
 | Phase Stalker | Rare | Unit | 5 | Deploy: Move an enemy unit to its other row; it loses 3. |
 | Signal Jammer | Rare | Unit | 3 | Deploy: Silence an enemy unit. |
-| Replicator | Rare | Unit | 4 | Deploy: Summon an Echo copy of an allied unit with 5 or less power in its other row. |
+| Replicator | Rare | Unit | 4 | Deploy: Choose another allied unit with 5 or less power. Summon an Echo with its power in its other row. |
 | Data Wraith | Rare | Unit | 3 | Deploy: Draw a card. |
 | Gridlock Golem | Rare | Unit | 6 | Echo 3. Summon a 3-power token in your other row. |
 | Puppeteer | Rare | Unit | 4 | Deploy: Take control of an enemy unit with 2 or less power. |
@@ -182,13 +182,13 @@ Floods both rows with tokens, then steals and shoves enemy units. Too wide to Bu
 | Static Runner | Common | Unit | 5 | Echo 2. Summon a 2-power token in your other row. |
 | Relay Drone | Common | Unit | 3 | Deploy: Move an enemy unit to its other row; it loses 2. |
 | Patchwork | Common | Unit | 6 | — |
-| Afterimage | Common | Special | — | Copy your strongest unit as an Echo in its other row. |
+| Afterimage | Common | Special | — | Summon an Echo with the power of your strongest unit in its other row. |
 | Signal Ghost | Common | Unit | 2 | Resolve: Summon a 4-power Echo in your other row. |
 | Shard Bot | Common | Unit | 2 | Echo 2. Summon a 2-power token in your other row. |
 | Ping Drone | Common | Unit | 3 | Deploy: An enemy unit loses 2. |
 | Splitter | Common | Unit | 3 | Last Words: Summon two 2-power Echoes in this row. |
 | Hacker | Common | Unit | 3 | Deploy: Remove Guard and Shield from an enemy unit. |
-| Wire Hound | Common | Unit | 5 | Deploy: Your Echo tokens gain 1. |
+| Wire Hound | Common | Unit | 5 | Deploy: Your tokens gain 1. |
 | Static Burst | Common | Special | — | Every enemy unit with 2 or less power loses 2. |
 
 ### Neutral
