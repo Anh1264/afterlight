@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { RULES, STARTERS, ALL_HOUSES, House, validateDeck } from './cards';
-import { Action, GameState, PIdx, applyAction, createGame, targetSpecFor, totals, viewFor } from './engine';
+import { Action, GameState, PIdx, applyAction, createGame, targetSpecFor, totals, validate, viewFor } from './engine';
 
 function setup(h0: House, h1: House, hand0: string[], hand1: string[]): GameState {
   const { state: g } = createGame({ houses: [h0, h1], seed: 5, first: 0 });
@@ -100,5 +100,38 @@ describe('engine', () => {
     act(g, 1, { type: 'play', uid: 'b0', row: 'F' });
     act(g, 0, { type: 'play', uid: 'a0', row: 'F', targets: ['b0'] });
     expect(g.players[1].units.length).toBe(0);
+  });
+
+  describe('validate: targets are rejected unless the target spec is units', () => {
+    const bigUnit = (uid: string, owner: PIdx, power: number) => ({ uid, cardId: 'skarr', name: 'Skarr', owner, house: 'EMBER' as const, power, base: power, row: 'F' as const, grow: false, guard: false, shield: false, poison: false, token: false, silenced: false });
+
+    it('spec none: Azhar (Destroy <=6) with only a 9-power enemy cannot be sent a target', () => {
+      const g = setup('EMBER', 'ORDER', ['azhar', 'pyre-hound'], ['lancer']);
+      g.players[1].units.push(bigUnit('big', 1, 9));
+      expect(validate(g, 0, { type: 'play', uid: 'a0', row: 'F', targets: ['big'] })).toBe('Illegal target.');
+      const r = applyAction(g, 0, { type: 'play', uid: 'a0', row: 'F', targets: ['big'] });
+      expect('error' in r).toBe(true);
+      expect(g.players[1].units.map(u => u.uid)).toEqual(['big']);
+      expect(g.players[0].hand.length).toBe(2);
+      // the same card with no targets is still legal and destroys nothing
+      expect(validate(g, 0, { type: 'play', uid: 'a0', row: 'F' })).toBeNull();
+      act(g, 0, { type: 'play', uid: 'a0', row: 'F' });
+      expect(g.players[1].units.map(u => u.uid)).toEqual(['big']);
+    });
+
+    it('spec row: a row-wide card rejects unit targets on top of its row choice', () => {
+      const g = setup('COVEN', 'EMBER', ['grandmother-rot'], []);
+      g.players[1].units.push(bigUnit('foe', 1, 3));
+      expect(validate(g, 0, { type: 'play', uid: 'a0', row: 'B', targetRow: 'F', targets: ['foe'] })).toBe('Illegal target.');
+      expect(validate(g, 0, { type: 'play', uid: 'a0', row: 'B', targetRow: 'F' })).toBeNull();
+    });
+
+    it('spec mode: the row option rejects unit targets, the units option still takes them', () => {
+      const g = setup('EMBER', 'ORDER', ['hellfire'], []);
+      g.players[1].units.push(bigUnit('foe', 1, 7));
+      expect(validate(g, 0, { type: 'play', uid: 'a0', mode: 1, targetRow: 'F', targets: ['foe'] })).toBe('Illegal target.');
+      expect(validate(g, 0, { type: 'play', uid: 'a0', mode: 1, targetRow: 'F' })).toBeNull();
+      expect(validate(g, 0, { type: 'play', uid: 'a0', mode: 0, targets: ['foe'] })).toBeNull();
+    });
   });
 });
