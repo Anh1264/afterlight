@@ -356,6 +356,8 @@ export function validate(g: GameState, p: PIdx, a: Action): string | null {
     if (!m) return 'Choose a mode.';
     spec = m.spec;
   }
+  // only a units spec takes unit targets; for none/row, crafted uids must not reach applyEffect
+  if (spec.kind !== 'units' && (a.targets ?? []).length > 0) return 'Illegal target.';
   if (spec.kind === 'units') {
     const ts = a.targets ?? [];
     if (new Set(ts).size !== ts.length) return 'Duplicate targets.';
