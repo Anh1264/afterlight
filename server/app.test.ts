@@ -556,6 +556,21 @@ describe('c6 seats (a seat that drops twice)', () => {
   });
 });
 
+// ============================================================================ health uptime
+describe('/health uptimeS', () => {
+  // No injectable clock (ServerOptions has none), so this uses real time. bootedAt is taken inside
+  // createGameServer, shortly before boot() resolves. Waiting 700 ms puts the elapsed time at about
+  // 700-750 ms: past 500 ms, where Math.round wrongly gives 1, and 250 ms short of 1000 ms, where even
+  // Math.floor would give 1, so scheduling jitter can't flip the result.
+  it('uptimeS never exceeds the real uptime: 700 ms after boot it is the integer 0, not 1', async () => {
+    const { url } = await boot();
+    await sleep(700);
+    const { uptimeS } = await healthJson(url);
+    expect(Number.isInteger(uptimeS)).toBe(true);
+    expect(uptimeS).toBe(0);
+  });
+});
+
 // ============================================================================ c7
 describe('c7 no clock against the bot', () => {
   it('c7: DEFAULT_LIMITS durations are pinned (60 s turn and grace, 15 min bot idle, 2 min lobby, 30 min room, 30 s sweep)', () => {
