@@ -1,16 +1,27 @@
 ---
 name: bug
-description: Fix an AFTERLIGHT bug the professional way - reproduce it as a failing test first, root-cause it, fix it, verify, review, open a PR. Use when Aiden says /bug or reports something broken.
+description: Fix an AFTERLIGHT bug the fast, professional way - size it, reproduce it as a failing test, fix it, review and UX-check in parallel, open a PR. Use when Aiden says /bug or reports something broken.
 argument-hint: <what's broken, and how to trigger it>
 disable-model-invocation: true
 ---
 You are the orchestrator for this bug: $ARGUMENTS
+Target for an S bug: about 45 minutes and 10M tokens end to end. Give Aiden one status line per step.
 
-1. Triage (you). Restate the bug as expected vs actual, with exact repro steps. Find the likely area (shared / server / client). If it's actually a feature or bigger than S, say so and switch to /ship. Add it to docs/backlog.md if it isn't there.
+0. Session: this must be a fresh worktree session with no other item in it (CLAUDE.md "Team"). If it isn't, stop and ask Aiden to start one.
+1. Triage (you). Restate the bug as expected vs actual, with exact repro steps, and find the area (shared / server / client). Size it (CLAUDE.md "Sizing") and say why in one line:
+   - Unknown cause -> run one capped investigation first (the area's dev, or architect for sync, reconnection or determinism): cause with file:line, then size.
+   - M or L -> stop and switch to /ship.
+   - S -> continue. Add it to docs/backlog.md if it isn't there.
 2. Branch: `fix/<id>-<slug>` (CLAUDE.md "Git").
-3. Reproduce - qa-engineer, given the bug report only. Output: a test that fails because of the bug (unit for rules, Playwright for UI and navigation). Confirm the failure yourself. For a UI bug, also have ux-reviewer capture before-screenshots at both viewports.
-4. Root cause - the area's developer (engine-dev, server-dev or client-dev) states the cause in 1-3 sentences with file:line BEFORE changing anything. Check the cause explains every symptom. If it doesn't, or the bug is in a hard area (sync, reconnection, determinism), use architect for the root cause instead.
-5. Fix - same developer. Gate: `npm run check` green with the repro test passing. Failures follow the CLAUDE.md escalation rule.
-6. Look for siblings: grep for the same pattern elsewhere (the same mistake usually exists twice). Fix or file each one.
-7. Review - code-reviewer on the branch. UI bugs: ux-reviewer after-screenshots at both viewports.
-8. PR: commit, push the branch, `gh pr create`. The body gives the root cause, the fix, the repro test, before/after screenshots, and the siblings found. Update docs/backlog.md. Aiden merges.
+3. Repro and fix - one dev of the area (engine-dev, server-dev or client-dev; Sonnet, xhigh), given the bug report, the size and the working directory. In this order:
+   1. Write the repro test (unit for rules, Playwright for UI and navigation; for a UI bug, also cover arriving by direct URL and reload) and run it: it must fail for the bug's reason. Report that output.
+   2. State the cause in 1-3 sentences with file:line, and check it explains every symptom.
+   3. Fix, then grep for the same mistake elsewhere: fix it if it's in the same area and S, otherwise list it.
+   4. Gate: `npm run check` green, plus the affected e2e specs (not the full suite).
+   It stops and reports if the fix reaches an L surface or outgrows S. Failures follow the CLAUDE.md escalation rule.
+4. Verify - you: re-run `npm run check` and the affected specs. Don't re-read files the dev already summarized.
+5. Review, in parallel (one message, two agents), both with `model: sonnet` and told "size S":
+   - code-reviewer on the branch. It reverts the fix once to prove the repro test fails.
+   - ux-reviewer, for user-visible bugs only: the changed screen at both viewports, arriving by direct URL as well as by click, at most 6 screenshots.
+   CHANGES -> back to the dev, then a delta review (cycle 2 covers only what changed). At most 2 cycles; then escalate to Aiden.
+6. PR: commit, push the branch, `gh pr create`. The body states the size, the cause, the fix, the repro test and its pre-fix failure, the screenshots, the siblings found, and the reviewer's "Enforce mechanically" line. File each sibling and enforcement item in docs/backlog.md and update the bug's status. Aiden merges; the session ends here.

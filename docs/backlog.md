@@ -1,9 +1,35 @@
 # Backlog
 
 Seeded from the CTO code review of Oct 6, 2026 (commit 762c1c4); the review findings first left out were added the same day. Statuses: todo / spec / building / review / done.
-Phase 0 goes first: the agent team is only as good as the gates that check its work.
+Work goes by milestone, not date (Aiden, Oct 7): a milestone is done when its exit criteria hold. Sizes follow CLAUDE.md "Sizing".
 
-## Demo MVP - public demo vs the bot (link goes public Tue Oct 13)
+## Milestone 1 - Team v2: cheaper, checked work
+From Aiden's agent-architecture-v2 proposal (Oct 7). Exit: the first S bug after AG-1 to AG-3 lands takes about 45 minutes and 10M tokens or less end to end (orchestrator plus agents, from the session logs), and every AG-6 check fails on a deliberately bad commit and passes on main.
+
+| ID | Area | Size | Item | Status |
+| --- | --- | --- | --- | --- |
+| AG-1 | team | S | One fresh worktree session per item; the orchestrator never carries two items and trusts agent returns. Aiden-reported bugs are triaged the same turn. | review |
+| AG-2 | team | S | Review depth by size: S reviews on Sonnet (diff, check, one revert), M/L full; cycle 2 is a delta review. /bug: one Sonnet dev writes the repro test then the fix; review and UX check run in parallel; S runs only the affected e2e specs (CI runs all). Sizing by risk and open decisions. | review |
+| AG-3 | team | S | ux-reviewer screenshot budget (S 6, M 20, /ux-pass 40), Read only the ones judged, and arrive at each changed screen by direct URL, reload and Back/Forward. | review |
+| AG-7 | team | S | code-reviewer returns an "Enforce mechanically" line; the orchestrator files each one under this milestone. | review |
+| AG-6 | tooling | M | Invariants become CI failures, all in ESLint (absorbs T5): `no-explicit-any`, `no-non-null-assertion`, `no-empty`; import boundaries (shared/ imports nothing from server/ or client/, server/ nothing from client/); engine purity (`Date`, `Math.random`, Node I/O banned in shared/engine via `no-restricted-globals` / `-properties` / `-imports`). Plus a fuzz test that `viewFor()` output never holds the opponent's hand, the deck order or the seed. Mark each enforced invariant "(CI)" in CLAUDE.md. Accept: each rule fails on a deliberately bad commit. | todo |
+| AG-5 | e2e | S | One stable-wait helper in e2e/helpers.ts: fonts loaded, animations idle (`document.getAnimations()`), and layout settled (an element's box unchanged across two frames: the C12 flake was the back row sliding, not an animation). Every spec waits on it before asserting or taking a screenshot. Accept: `npm run e2e` passes 10 runs in a row. | todo |
+| AG-4 | client | M | Route table as the verification map: one typed table in client/ (each screen, its URL, how a player can arrive, where its exits go). App.tsx navigates through it with one `navigate()` helper; ESLint bans raw `history.*` elsewhere (B1's cause). e2e helpers import the table, and one generated spec opens every route by direct URL and reload and checks that every Back/Home control stays on the site. Accept: a new route gets that coverage without writing a test. | todo |
+| AG-10 | tooling | S | Size check in CI: a script lists the areas and protected paths a PR touches (shared/protocol.ts, persistence, the effect system, viewFor) and flags a PR body that says "Size: S" but touches an L surface or two areas. | todo |
+| T6 | e2e | ? | Flake: server-ended.spec.ts:58 (c7 FAIL_BOT_TURN=1) timed out at :70 waiting 30 s for the "Something went wrong" message on PR #14's CI run 37590988918, a docs-only PR. The same code passed on #13's run. Unknown cause, so first a capped investigation (the error-context and trace from a failing run; the pass-until-the-bot-acts poll), then size it. | todo |
+| AG-8 | team | S | Eval set for agent changes: docs/evals/agents.md with 3 fixed past tasks (B1, a server change like 2a, a UX check) and rubrics; a PR that changes .claude/ or CLAUDE.md runs them on its branch and on main and reports pass/fail, tokens and minutes. After Milestone 2, once there are runs to compare; check that `claude -p --agent` works first. | todo |
+
+Rejected: AG-9 (a Haiku chores agent). AG-1 removes the cost of backlog updates, and README card tables should be an npm script.
+
+## Milestone 2 - Finish the demo MVP
+Exit: a desktop visitor can open the public link, learn the rules, finish a match against the bot and give feedback. B2 and B3 are the first runs of the new /bug pipeline, measured against Milestone 1's exit.
+- Aiden: the feedback form URL for the Give feedback link.
+- B2, B3 (below).
+
+## Milestone 3 - E1, the typed effect registry
+The main "shortest path is the right path" case: today a new effect is handled in three places. A `Record<EffectKind, Handler>` makes a missing handler a type error, and rules text is generated from the definition (invariant 5). Item E1 under P1.
+
+## Demo MVP - public demo vs the bot
 Spec and design: docs/specs/demo-mvp.md. Feature PRs don't edit this file; the orchestrator updates the statuses.
 
 | PR | Items | Status |
@@ -33,7 +59,7 @@ Spec and design: docs/specs/demo-mvp.md. Feature PRs don't edit this file; the o
 | T1 | tooling | M | Install vitest and Playwright. Port engine.test.ts to vitest. Add e2e/ helpers (start server, play a bot match, open /cards). `npm run check` = typecheck + vitest + fuzz-lite; `npm run e2e` separately. | done |
 | T2 | ops | S | GitHub Actions on push/PR: check + e2e + `npm audit --omit=dev`. Railway deploys only after CI is green. | done (#1) |
 | T4 | tooling | S | Split shared/simulate.ts into a library and a CLI. Today importing `randomDeck` runs the full 700-match simulation at import time. Needed for T1's fuzz-lite. | done |
-| T5 | tooling | S | Install ESLint and enforce the CLAUDE.md conventions (no `any`, no non-null assertions, no empty `catch`). The code already has `eslint-disable` comments for a linter that isn't installed. | todo |
+| T5 | tooling | S | Install ESLint and enforce the CLAUDE.md conventions (no `any`, no non-null assertions, no empty `catch`). The code already has `eslint-disable` comments for a linter that isn't installed. | moved into AG-6 |
 
 ## P0 - before any promotion
 | ID | Area | Size | Item | Status |
@@ -42,7 +68,7 @@ Spec and design: docs/specs/demo-mvp.md. Feature PRs don't edit this file; the o
 | P0-2 | ops | S | Push local main: it is 2 commits ahead of GitHub, so Railway still serves v0.2. (Aiden, from his terminal.) Pushed; Railway's production deploy of e44a92e succeeded on Oct 6. | done |
 | P0-3 | client | S | Client hard-codes First Light +1; the engine uses +2 (`RULES.FIRST_LIGHT`). Use shared `totals()` in Game.tsx:193-194 and fix the chip (Game.tsx:285) and rules copy (Screens.tsx:64). The pass button can promise WIN on a tie. | done (#3) |
 | P0-4 | server | S | One room per socket; release the old seat on attach; rate-limit room:create; check `seat.socketId === socket.id` on game events. One socket created 20,000 rooms in 2.5 s; rooms held by dead sockets are never swept. | done (#5) |
-| B1 | client | S | Reported by Aiden: Back on the All Cards page leaves the site when /cards was opened directly. Cause: App.tsx `onBack` uses `history.length > 1`, which counts pages from before the app. Back should go to Home unless the previous entry is ours. The label names the destination: "← Home" or "← Back to lobby". | review ([#13](https://github.com/Anh1264/afterlight/pull/13)) |
+| B1 | client | S | Reported by Aiden: Back on the All Cards page leaves the site when /cards was opened directly. Cause: App.tsx `onBack` uses `history.length > 1`, which counts pages from before the app. Back should go to Home unless the previous entry is ours. The label names the destination: "← Home" or "← Back to lobby". | done ([#13](https://github.com/Anh1264/afterlight/pull/13), merged Oct 7) |
 | B2 | client | S | If a match ends (`onEnded`) while the gallery is open, `home()` (App.tsx:155) doesn't clear `gallery`, so the gallery reappears at `/`. Needs an in-game end while on /cards, so it's unlikely. Found in the B1 code review. | todo |
 | B3 | client | S | A server restart detected while the player is on /cards shows the "match ended" notice instead of "the server restarted". Found in the B1 code review. | todo |
 
