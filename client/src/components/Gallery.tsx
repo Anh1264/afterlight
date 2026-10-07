@@ -6,7 +6,7 @@ import { KeywordHelp } from './Help';
 
 const TIER_LABEL: Record<Tier, string> = { LEGEND: 'LEGEND · MAX 1', RARE: 'RARE · MAX 2', COMMON: 'COMMON · MAX 3' };
 
-export function Gallery({ onBack }: { onBack: () => void }) {
+export function Gallery({ backLabel, onBack }: { backLabel: string; onBack: () => void }) {
   const [house, setHouse] = useState<CardHouse | 'ALL'>('ALL');
   const [open, setOpen] = useState<string | null>(null);
   const houses = house === 'ALL' ? CARD_HOUSES : [house];
@@ -14,7 +14,7 @@ export function Gallery({ onBack }: { onBack: () => void }) {
   return (
     <div className="gallery">
       <aside className="gal-side">
-        <button className="link" onClick={onBack}>← Back</button>
+        <button className="link" onClick={onBack}>{backLabel}</button>
         <h1 className="gal-title">All cards</h1>
         <p className="dim gal-sub">{total} cards: 4 houses plus Neutral. A deck is exactly {DECK_RULES.SIZE} cards from one house plus any Neutrals, with at most {DECK_RULES.MAX_LEGENDS} Legends and {DECK_RULES.MAX_RARES} Rares. Copies: Legend ×1, Rare ×2, Common ×3.</p>
         <div className="gal-tabs">

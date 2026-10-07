@@ -14,7 +14,7 @@ Spec and design: docs/specs/demo-mvp.md. Feature PRs don't edit this file; the o
 | 3 Bot Round 1 and card text | DM-1, DM-3 | done ([#9](https://github.com/Anh1264/afterlight/pull/9), merged Oct 7) |
 | 4 Truth on screen and the demo surface | P0-3, DM-4 | done ([#3](https://github.com/Anh1264/afterlight/pull/3), merged Oct 7) |
 | 5 Phones, link preview and recovery | DM-5, DM-7, C4 | done ([#10](https://github.com/Anh1264/afterlight/pull/10), merged Oct 7) |
-| 6 Readable cards in a match | C12 | review (code review APPROVE after 2 cycles and a delta check; ux SHIP; PR open) |
+| 6 Readable cards in a match | C12 | done ([#12](https://github.com/Anh1264/afterlight/pull/12), merged Oct 7) |
 
 | ID | Area | Size | Item | Status |
 | --- | --- | --- | --- | --- |
@@ -42,7 +42,9 @@ Spec and design: docs/specs/demo-mvp.md. Feature PRs don't edit this file; the o
 | P0-2 | ops | S | Push local main: it is 2 commits ahead of GitHub, so Railway still serves v0.2. (Aiden, from his terminal.) Pushed; Railway's production deploy of e44a92e succeeded on Oct 6. | done |
 | P0-3 | client | S | Client hard-codes First Light +1; the engine uses +2 (`RULES.FIRST_LIGHT`). Use shared `totals()` in Game.tsx:193-194 and fix the chip (Game.tsx:285) and rules copy (Screens.tsx:64). The pass button can promise WIN on a tie. | done (#3) |
 | P0-4 | server | S | One room per socket; release the old seat on attach; rate-limit room:create; check `seat.socketId === socket.id` on game events. One socket created 20,000 rooms in 2.5 s; rooms held by dead sockets are never swept. | done (#5) |
-| B1 | client | S | Reported by Aiden: Back on the All Cards page leaves the site when /cards was opened directly. Cause: App.tsx `onBack` uses `history.length > 1`, which counts pages from before the app. Back should go to Home unless the previous entry is ours. | todo |
+| B1 | client | S | Reported by Aiden: Back on the All Cards page leaves the site when /cards was opened directly. Cause: App.tsx `onBack` uses `history.length > 1`, which counts pages from before the app. Back should go to Home unless the previous entry is ours. The label names the destination: "← Home" or "← Back to lobby". | review ([#13](https://github.com/Anh1264/afterlight/pull/13)) |
+| B2 | client | S | If a match ends (`onEnded`) while the gallery is open, `home()` (App.tsx:155) doesn't clear `gallery`, so the gallery reappears at `/`. Needs an in-game end while on /cards, so it's unlikely. Found in the B1 code review. | todo |
+| B3 | client | S | A server restart detected while the player is on /cards shows the "match ended" notice instead of "the server restarted". Found in the B1 code review. | todo |
 
 ## P1 - make it launchable
 | ID | Area | Size | Item | Status |
@@ -81,7 +83,7 @@ Spec and design: docs/specs/demo-mvp.md. Feature PRs don't edit this file; the o
 | C9 | client | S | Rules numbers still hard-coded outside PR 4's files: Gallery.tsx:7 and :19 ("MAX 1/2/3", "Legend ×1, Rare ×2, Common ×3") should read `DECK_RULES`, and Game.tsx "WAITING 60s" repeats the server's drop grace (PvP only). Found in the PR 4 review. | todo |
 | C10 | client | S | First Light is hard to see: at 1366x650 the divider chip renders at about 8 px in dim grey, so the holder's total is 2 more than its rows add up to with no visible reason. Show the bonus next to the holder's total in Round 1, or make the chip legible. Found in the PR 4 ux pass. | todo |
 | C11 | client | S | The first-visit How to play shows 17 keywords at about 10 px beside the 5 steps: a wall of text for a first impression. Consider showing only the steps there and pointing to the in-game "Rules & keywords". Found in the PR 4 ux pass. | todo |
-| C12 | client | S | In a match a card can’t be read: the right-hand inspect panel, the only reading surface, renders rules text at 5.7 px and keyword help at 9 px at 1366x650 (7.1 and 11.3 px at 1440x900). Target 12 px or more at 1366x650. Promoted into the demo by the condition set in the PR 4 ux pass ("fix if a card’s text can’t be read on hover"), with measurements from the PR 3 ux check. Branch `fix/C12-readable-inspect`. | review (PR 6) |
+| C12 | client | S | In a match a card can’t be read: the right-hand inspect panel, the only reading surface, renders rules text at 5.7 px and keyword help at 9 px at 1366x650 (7.1 and 11.3 px at 1440x900). Target 12 px or more at 1366x650. Promoted into the demo by the condition set in the PR 4 ux pass ("fix if a card’s text can’t be read on hover"), with measurements from the PR 3 ux check. Branch `fix/C12-readable-inspect`. | done (#12) |
 | C13 | client | S | When the pass button reads PASS · WIN MATCH, the hint above the hand still says "Pass to take the round, or keep building". Say "match" when passing ends the match (Game.tsx `prompt`). Found in the PR 4 final ux pass. | todo |
 | C14 | client | S | Drake-07’s taller text panel (4 lines since PR 3) hides the feet in its art. Move the art up about 50 px (`client/src/art.ts`, `ART.drake.ay` -120 to about -170). Needs Aiden’s eye. Found in the PR 3 ux check. | todo |
 | C15 | client | S | The "Your turn…" prompt pill covers the top of a lifted hand card, including its power. Board tiles cut long names ("Quartermaste"), and a token’s "ECHO" label sits partly under its power badge. At inner 1366x650 the outer hand cards also extend about 16 px below the stage at rest (unchanged since before PR 4; moved here from C12). Found in the PR 3 ux check and the PR 6 ux check. | todo |
