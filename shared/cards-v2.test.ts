@@ -975,6 +975,19 @@ behaviours['lamplighter'] = () => {
     expect(unitOf(g, 0, 'lamplighter').power).toBe(3);
     expect(ev).toContainEqual({ t: 'resolve', p: 0, cardId: 'lamplighter' });
   });
+  it('inv5 lamplighter: gives +4 power and no Shield (a shieldboost:4 mutation must fail)', () => {
+    const g = stage(0);
+    g.players[1].passed = true;
+    const ally = body(g, 0, 'F', 4);
+    const bystander = body(g, 0, 'B', 5);
+    const ev = play(g, 0, 'lamplighter', { row: 'B', targets: [ally] });
+    expect(powerOf(g, ally)).toBe(4 + 4);
+    expect(find(g, ally.uid)?.shield).toBe(false);
+    expect(ev).not.toContainEqual({ t: 'status', uid: ally.uid, s: 'shield' });
+    expect(unitOf(g, 0, 'lamplighter').shield).toBe(false);
+    expect([powerOf(g, bystander), find(g, bystander.uid)?.shield]).toEqual([5, false]);
+    expect(ev.filter(e => e.t === 'status')).toEqual([]);
+  });
   it('inv5 lamplighter edge: before the opponent passes it needs no target and boosts nothing', () => {
     const g = stage(0);
     const ally = body(g, 0, 'F', 4);
@@ -998,6 +1011,17 @@ behaviours['tinker'] = () => {
     expect(find(g, ally.uid)?.shield).toBe(true);
     expect(unitOf(g, 0, 'tinker').shield).toBe(false);
     expect(ev).toContainEqual({ t: 'status', uid: ally.uid, s: 'shield' });
+  });
+  it('inv5 tinker: gives Shield and no power change (a shieldboost mutation must fail)', () => {
+    const g = stage(0);
+    const ally = body(g, 0, 'F', 4);
+    const bystander = body(g, 0, 'B', 5);
+    const ev = play(g, 0, 'tinker', { row: 'B', targets: [ally] });
+    expect(find(g, ally.uid)?.shield).toBe(true);
+    expect(powerOf(g, ally)).toBe(4);
+    expect(unitOf(g, 0, 'tinker').power).toBe(3);
+    expect([powerOf(g, bystander), find(g, bystander.uid)?.shield]).toEqual([5, false]);
+    expect(ev.filter(e => e.t === 'boost')).toEqual([]);
   });
   it('inv5 tinker edge: an ally that already has Shield is not offered; with no one to Shield it still plays', () => {
     const g = stage(0);
@@ -1044,6 +1068,13 @@ describe('inv2 a card with no legal target accepts no target', () => {
 });
 
 // ---------------------------------------------------------------- emit one describe per card
+describe('AC1 behaviour coverage', () => {
+  it('AC1 every wave-1 card has a behaviour test, and every behaviour test belongs to a wave-1 card (41, no more, no fewer)', () => {
+    expect(W1_IDS).toHaveLength(41);
+    expect(Object.keys(behaviours).sort()).toEqual([...W1_IDS].sort());
+  });
+});
+
 describe('AC1 wave-1 cards (cards-v2.md section 1)', () => {
   for (const s of W1) {
     describe(`${s.id} (${s.name})`, () => {
@@ -1072,6 +1103,7 @@ describe('AC1 wave-1 cards (cards-v2.md section 1)', () => {
           expect(legalRows(g, 0, card(s.id))).toEqual(['F', 'B']);
         });
       }
+      // a card without an entry here would be skipped silently; the 'every wave-1 card has a behaviour test' guard below fails instead
       const behaviour = behaviours[s.id];
       if (behaviour) behaviour();
     });
