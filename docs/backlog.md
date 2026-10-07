@@ -9,19 +9,19 @@ Spec and design: docs/specs/demo-mvp.md. Feature PRs don't edit this file; the o
 | PR | Items | Status |
 | --- | --- | --- |
 | 1 Test gates | T1, T4, T2 | done ([#1](https://github.com/Anh1264/afterlight/pull/1), merged Oct 7); Railway's Wait for CI is Aiden's switch |
-| 2a Server hardening | P0-1, N4, DM-2, DM-8 | spec (design challenge done Oct 6) |
+| 2a Server hardening | P0-1, N4, DM-2, DM-8 | review (built; check and both browser tests green) |
 | 2b Abuse limits and logs | P0-4, DM-6 | spec |
-| 3 Bot Round 1 and card text | DM-1, DM-3 | build (bot rule done; card text in progress) |
-| 4 Truth on screen and the demo surface | P0-3, DM-4 | build (review: CHANGES, fixes in progress) |
-| 5 Phones, link preview and recovery | DM-5, DM-7, C4 | spec |
+| 3 Bot Round 1 and card text | DM-1, DM-3 | build (review cycle 1 fixes in progress) |
+| 4 Truth on screen and the demo surface | P0-3, DM-4 | review (#3) |
+| 5 Phones, link preview and recovery | DM-5, DM-7, C4 | tests first |
 
 | ID | Area | Size | Item | Status |
 | --- | --- | --- | --- | --- |
-| DM-1 | bot | S | The bot wins Round 1 against an immediate pass in at least 98% of 2,000 seeds (85% when the human plays their strongest card first) (it concedes 55.8% today), and judges who is ahead with the engine's totals, First Light included (bot.ts uses raw `score()`). | spec |
-| DM-2 | server | S | No turn clock in bot matches: today a 60 s timeout passes the whole round while a newcomer reads their hand. Idle bot matches end after 15 minutes instead. | spec |
+| DM-1 | bot | S | The bot wins Round 1 against an immediate pass in at least 98% of 2,000 seeds (85% when the human plays their strongest card first) (it concedes 55.8% today), and judges who is ahead with the engine's totals, First Light included (bot.ts uses raw `score()`). | build |
+| DM-2 | server | S | No turn clock in bot matches: today a 60 s timeout passes the whole round while a newcomer reads their hand. Idle bot matches end after 15 minutes instead. | review |
 | DM-3 | engine | S | Card text matches the engine for Drake-07 and Lattice (Legends in the Echo starter), plus Replicator, Afterimage and Wire Hound, found during the build. Text only, plus their README rows and the Echo keyword tooltip match. | build |
-| DM-4 | client | M | Demo surface: Play vs Bot is the only home action (PvP at `/?pvp=1`), deck builder hidden, no ART PENDING, PLAYTEST label, How to play on the first click, Give feedback link, rules numbers from shared constants. | spec |
-| DM-5 | client | S | Phones and tablets get a "made for desktop" screen (Copy link, Try anyway, no art preload). Link-preview tags (og/twitter), a fullscreen button, and the device class sent in the socket handshake. | spec |
+| DM-4 | client | M | Demo surface: Play vs Bot is the only home action (PvP at `/?pvp=1`), deck builder hidden, no ART PENDING, PLAYTEST label, How to play on the first click, Give feedback link, rules numbers from shared constants. | review (#3) |
+| DM-5 | client | S | Phones and tablets get a "made for desktop" screen (Copy link, Try anyway, no art preload). Link-preview tags (og/twitter), a fullscreen button, and the device class sent in the socket handshake. | tests first |
 | DM-6 | server | S | One single-line JSON log per funnel event (no tokens, IPs or names). Build SHA and since-boot counters on `/health`. | spec |
 | DM-7 | client | M | Recovery: "the server restarted and your match was lost" instead of the invite/expired screen, "Can't reach the server. Retrying...", and a message for matches the server ended (error or idle). | spec |
 | DM-8 | server | S | Bot rooms play starter decks only, enforced by the server: `lobby:deck` is rejected in bot rooms (today it accepts any legal custom deck). | spec |
@@ -81,7 +81,7 @@ Spec and design: docs/specs/demo-mvp.md. Feature PRs don't edit this file; the o
 | C11 | client | S | The first-visit How to play shows 17 keywords at about 10 px beside the 5 steps: a wall of text for a first impression. Consider showing only the steps there and pointing to the in-game "Rules & keywords". Found in the PR 4 ux pass. | todo |
 | C12 | client | S | At inner 1366x650 the hand cards are clipped at the bottom of the stage (names readable, ability text cut). Check at Friday's ux pass; fix if a card's text can't be read on hover. Found in the PR 4 ux pass. | todo |
 | E5 | engine | S | engine.ts:104 seeds with `Math.random` when no seed is passed, a gap against invariant 1 (determinism). Require a seed, or move the default to the server. Found in the demo design challenge. | todo |
-| E6 | engine | S | Null-9 and Puppeteer text leaves out what seize does at the edges: the taken unit loses Poison, and moves to the other row when its own row is full (engine.ts:555-565). Text only. Found by game-designer during PR 3. | todo |
+| E6 | engine | S | Null-9 and Puppeteer text leaves out what seize does at the edges: the taken unit loses Poison, and moves to the other row when its own row is full (engine.ts:555-565). Afterimage does not say which unit it copies when two are tied for strongest (the engine takes the one that reached the board first, engine.ts:542), which decides the Echo’s row. Text only. Found by game-designer during PR 3. | todo |
 | O5 | ops | M | Staging environment: a Railway environment that deploys from a `staging` branch. Today production is the only place the full stack runs. | todo |
 | O6 | ops | S | Version releases: package.json still says 0.1.0 and there are no git tags. Tag each deploy (pairs with the build SHA in O3). | todo |
 | O7 | ops | S | Bump `concurrently` (2 critical audit issues in `shell-quote`, dev-only). | todo |
