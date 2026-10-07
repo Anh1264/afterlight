@@ -2,6 +2,9 @@ import { expect, type Page } from '@playwright/test';
 
 /** Helpers shared by e2e specs. Keep them small; later PRs extend them. */
 
+/** localStorage key that records the How to play modal was seen. Re-exported so client and tests cannot drift apart. */
+export { SEEN_RULES_KEY } from '../client/src/prefs';
+
 const passBtn = (page: Page) => page.locator('.btn.pass');
 const endTitle = (page: Page) => page.locator('.end-title');
 
@@ -28,11 +31,15 @@ export async function startBotMatch(page: Page, house = 0, hooks: { onHome?: () 
     }).observe(document, { childList: true, subtree: true });
   });
   await page.goto('/');
-  // Later PRs: dismiss the first-visit How to play modal here.
   await expect(page.getByRole('button', { name: 'Play vs Bot' })).toBeEnabled();
   await hooks.onHome?.();
   await page.getByRole('button', { name: 'Play vs Bot' }).click();
-  await expect(page.getByRole('heading', { name: 'Choose your house' })).toBeVisible();
+  // A fresh browser may open the How to play modal first (PR 4); "Got it" then continues to the lobby.
+  const lobby = page.getByRole('heading', { name: 'Choose your house' });
+  const gotIt = page.getByRole('button', { name: 'Got it' });
+  await expect(lobby.or(gotIt)).toBeVisible();
+  if (await gotIt.isVisible()) await gotIt.click();
+  await expect(lobby).toBeVisible();
   await page.locator('.house').nth(house).click();
   await expect(page.locator('.house.on')).toHaveCount(1);
   await hooks.onLobby?.();
@@ -90,7 +97,7 @@ async function playAnyCard(page: Page): Promise<boolean> {
 }
 
 /** Pass (the first click only arms it unless the opponent already passed). */
-async function pass(page: Page) {
+export async function pass(page: Page) {
   const btn = passBtn(page);
   await btn.click();
   await expect.poll(async () => (await btn.isDisabled()) || /CLICK AGAIN/.test((await btn.textContent()) ?? ''), { timeout: 5_000 }).toBe(true);
