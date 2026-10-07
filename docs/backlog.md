@@ -42,7 +42,9 @@ Spec and design: docs/specs/demo-mvp.md. Feature PRs don't edit this file; the o
 | P0-2 | ops | S | Push local main: it is 2 commits ahead of GitHub, so Railway still serves v0.2. (Aiden, from his terminal.) Pushed; Railway's production deploy of e44a92e succeeded on Oct 6. | done |
 | P0-3 | client | S | Client hard-codes First Light +1; the engine uses +2 (`RULES.FIRST_LIGHT`). Use shared `totals()` in Game.tsx:193-194 and fix the chip (Game.tsx:285) and rules copy (Screens.tsx:64). The pass button can promise WIN on a tie. | done (#3) |
 | P0-4 | server | S | One room per socket; release the old seat on attach; rate-limit room:create; check `seat.socketId === socket.id` on game events. One socket created 20,000 rooms in 2.5 s; rooms held by dead sockets are never swept. | review (#5) |
-| B1 | client | S | Reported by Aiden: Back on the All Cards page leaves the site when /cards was opened directly. Cause: App.tsx `onBack` uses `history.length > 1`, which counts pages from before the app. Back should go to Home unless the previous entry is ours. | todo |
+| B1 | client | S | Reported by Aiden: Back on the All Cards page leaves the site when /cards was opened directly. Cause: App.tsx `onBack` uses `history.length > 1`, which counts pages from before the app. Back should go to Home unless the previous entry is ours. The label names the destination: "← Home" or "← Back to lobby". | review (fix/B1-gallery-back-home) |
+| B2 | client | S | If a match ends (`onEnded`) while the gallery is open, `home()` (App.tsx:155) doesn't clear `gallery`, so the gallery reappears at `/`. Needs an in-game end while on /cards, so it's unlikely. Found in the B1 code review. | todo |
+| B3 | client | S | A server restart detected while the player is on /cards shows the "match ended" notice instead of "the server restarted". Found in the B1 code review. | todo |
 
 ## P1 - make it launchable
 | ID | Area | Size | Item | Status |

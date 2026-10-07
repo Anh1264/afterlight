@@ -10,6 +10,7 @@ import { Game } from './components/Game';
 import { Home, Join, Lobby } from './components/Screens';
 import { Stage } from './components/Stage';
 import { Gallery } from './components/Gallery';
+import { type GalleryFrom, backLabel, canStepBack, galleryAt, galleryMark } from './galleryNav';
 import { preloadArt } from './art';
 
 const codeFromPath = () => (location.pathname.match(/^\/r\/([A-Z0-9]{4,8})/i)?.[1] ?? '').toUpperCase();
@@ -18,7 +19,7 @@ export default function App() {
   const director = useMemo(() => new Director(), []);
   const ds = useSyncExternalStore(director.subscribe, director.get);
   const [code, setCode] = useState(codeFromPath);
-  const [gallery, setGallery] = useState(() => location.pathname === '/cards');
+  const [gallery, setGallery] = useState<GalleryFrom | null>(() => galleryAt(location.pathname, history.state)); // where the gallery was opened from; null = not showing
   const [room, setRoom] = useState<RoomSnapshot | null>(null);
   const [name, setNameS] = useState(store.name());
   const [error, setError] = useState<string | null>(null);
@@ -88,7 +89,7 @@ export default function App() {
     };
     rejoin();
     socket.on('connect', rejoin);
-    const onPop = () => { overRef.current = false; setPending(null); gen.current++; setEnded(null); setGallery(location.pathname === '/cards'); setCode(codeFromPath()); setRoom(null); director.reset(); rejoin(); };
+    const onPop = () => { overRef.current = false; setPending(null); gen.current++; setEnded(null); setGallery(galleryAt(location.pathname, history.state)); setCode(codeFromPath()); setRoom(null); director.reset(); rejoin(); };
     window.addEventListener('popstate', onPop);
     return () => { socket.off('connect', rejoin); window.removeEventListener('popstate', onPop); };
   }, [director]);
@@ -153,15 +154,16 @@ export default function App() {
   };
   const home = () => { setPending(null); gen.current++; overRef.current = false; setError(null); setNotice(null); setEnded(null); lastSeen.current = null; socket.emit('room:leave'); director.reset(); setRoom(null); go(''); };
 
-  const openGallery = () => { setPending(null); history.pushState(null, '', '/cards'); setGallery(true); };
-  const closeGallery = () => { history.back(); };
+  const openGallery = (from: GalleryFrom) => { setPending(null); history.pushState(galleryMark(from), '', '/cards'); setGallery(from); };
+  // Step back only into an entry AFTERLIGHT pushed; a direct visit may have another site behind it, so go Home instead.
+  const closeGallery = () => { if (canStepBack(history.state)) history.back(); else { history.replaceState(null, '', '/'); setGallery(null); } };
   let screen: React.ReactNode;
   if (ended) screen = <ServerEnded reason={ended} onHome={home} />;
-  else if (gallery) screen = <Gallery onBack={() => { if (history.length > 1) closeGallery(); else { history.replaceState(null, '', '/'); setGallery(false); } }} />;
-  else if (!code) screen = <Home name={name} setName={setName} onBot={() => start(true)} onCreate={() => start(false)} onCards={openGallery} busy={busy || retrying} error={error} notice={notice} />;
+  else if (gallery) screen = <Gallery backLabel={backLabel(gallery)} onBack={closeGallery} />;
+  else if (!code) screen = <Home name={name} setName={setName} onBot={() => start(true)} onCreate={() => start(false)} onCards={() => openGallery('home')} busy={busy || retrying} error={error} notice={notice} />;
   else if (!room && store.token(code)) screen = <div className="center-screen mono dim" style={{ flexDirection: 'column', gap: 12 }}><span>RECONNECTING…</span>{error && <span className="error">{error}</span>}</div>;
   else if (!room) screen = <Join code={code} name={name} setName={setName} onJoin={join} error={error} busy={busy} />;
-  else if (room.phase === 'lobby') screen = <Lobby room={room} onLeave={home} onCards={openGallery} />;
+  else if (room.phase === 'lobby') screen = <Lobby room={room} onLeave={home} onCards={() => openGallery('lobby')} />;
   else if (ds.shown) screen = <Game room={room} director={director} onHome={home} />;
   else screen = <div className="center-screen mono dim">LOADING MATCH…</div>;
 
