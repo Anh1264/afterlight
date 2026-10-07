@@ -1,34 +1,43 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
-import { ALL_HOUSES, CARDS, HOUSES, House, KEYWORDS, deckList } from '../../../shared/cards';
+import { ALL_HOUSES, CARDS, HOUSES, House, KEYWORDS, RULES, deckList } from '../../../shared/cards';
 import type { RoomSnapshot } from '../../../shared/protocol';
+import { FEEDBACK_URL } from '../links';
+import { hasSeenRules, markRulesSeen } from '../prefs';
 import { sendDeck, socket, store } from '../net';
 import { DeckBuilder } from './DeckBuilder';
 import { CardBack, CardFace, Sigil } from './Card';
 
+const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+const word = (n: number) => WORDS[n] ?? String(n);
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
 export function Home({ name, setName, onBot, onCreate, onCards, busy, error }: {
   name: string; setName: (n: string) => void; onBot: () => void; onCreate: () => void; onCards: () => void; busy: boolean; error: string | null;
 }) {
-  const [rules, setRules] = useState(false);
+  const [modal, setModal] = useState<'link' | 'first' | null>(null);
+  const pvp = new URLSearchParams(location.search).get('pvp') === '1';
+  const playBot = () => { if (hasSeenRules()) onBot(); else setModal('first'); };
   const fan = ['mawroot', 'halden', 'aiden', 'vorok'];
   return (
     <div className="home">
       <div className="home-left">
-        <span className="mono dim">A TWO-PLAYER CARD DUEL · v0.1</span>
+        <span className="mono dim">A TWO-PLAYER CARD DUEL · PLAYTEST</span>
         <motion.h1 className="logo" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>AFTERLIGHT</motion.h1>
-        <p className="lead">Three rounds. One card a turn. Pass at the right moment, because once you pass you’re out, and every card you spend now is one you won’t have in Round 3.</p>
+        <p className="lead">{cap(word(RULES.ROUNDS))} rounds. One card a turn. Pass at the right moment, because once you pass you’re out, and every card you spend now is one you won’t have in Round {RULES.ROUNDS}.</p>
         <label className="field">
           <span className="mono dim">YOUR NAME</span>
           <input value={name} maxLength={18} placeholder="Aiden" onChange={e => setName(e.target.value)} />
         </label>
         <div className="home-buttons">
-          <button className="btn dark big" disabled={busy} onClick={onBot}>Play vs Bot</button>
-          <button className="btn big" disabled={busy} onClick={onCreate}>Invite a friend</button>
+          <button className="btn dark big" disabled={busy} onClick={playBot}>Play vs Bot</button>
+          {pvp && <button className="btn big" disabled={busy} onClick={onCreate}>Invite a friend</button>}
         </div>
         {error && <span className="error">{error}</span>}
         <div className="home-links">
-          <button className="link" onClick={() => setRules(true)}>How to play →</button>
+          <button className="link" onClick={() => setModal('link')}>How to play →</button>
           <button className="link" onClick={onCards}>All cards →</button>
+          {FEEDBACK_URL && <a className="link" href={FEEDBACK_URL} target="_blank" rel="noopener noreferrer">Give feedback</a>}
         </div>
       </div>
       <div className="home-fan">
@@ -42,12 +51,15 @@ export function Home({ name, setName, onBot, onCreate, onCards, busy, error }: {
           </motion.div>
         ))}
       </div>
-      <AnimatePresence>{rules && <Rules onClose={() => setRules(false)} />}</AnimatePresence>
+      <AnimatePresence>
+        {modal && <Rules key={modal} onClose={() => { markRulesSeen(); setModal(null); }}
+          onGotIt={modal === 'first' ? () => { markRulesSeen(); setModal(null); onBot(); } : undefined} />}
+      </AnimatePresence>
     </div>
   );
 }
 
-export function Rules({ onClose }: { onClose: () => void }) {
+export function Rules({ onClose, onGotIt }: { onClose: () => void; onGotIt?: () => void }) {
   const kw: [string, string][] = KEYWORDS.map(k => [k.kw, k.t]);
   return (
     <motion.div className="modal-bg" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
@@ -55,22 +67,22 @@ export function Rules({ onClose }: { onClose: () => void }) {
         <div className="modal-cols">
           <div>
             <span className="mono dim">HOW TO PLAY</span>
-            <h2>Win two of three rounds.</h2>
+            <h2>Win {word(RULES.WINS_NEEDED)} of {word(RULES.ROUNDS)} rounds.</h2>
             <ol>
-              <li>Each player draws <b>8</b> cards. You draw <b>2</b> more after each round (hand limit 10).</li>
+              <li>Each player draws <b>{RULES.OPEN_HAND}</b> cards. You draw <b>{RULES.ROUND_DRAW}</b> more after each round (hand limit {RULES.HAND_MAX}).</li>
               <li>On your turn, <b>play one card</b> or <b>pass</b>. Once you pass, you’re out until the round ends.</li>
               <li>When both players have passed, the higher total wins the round. A tie counts for both.</li>
               <li>The board clears between rounds. Cards you spent are gone, so don’t overspend to win Round 1.</li>
-              <li>The first player gets <b>First Light</b>: +1 to their Round 1 total.</li>
+              <li>The first player gets <b>First Light</b>: +{RULES.FIRST_LIGHT} to their Round 1 total.</li>
             </ol>
-            <p className="dim">Each side has a <b>Front</b> and a <b>Back</b> row, 6 units each. Any unit can go in either row: drag it there, or click the card and then the row. Placement matters for Guard, Rally, Echo and effects that hit a whole row.</p>
+            <p className="dim">Each side has a <b>Front</b> and a <b>Back</b> row, {RULES.ROW_MAX} units each. Any unit can go in either row: drag it there, or click the card and then the row. Placement matters for Guard, Rally, Echo and effects that hit a whole row.</p>
           </div>
           <div>
             <span className="mono dim">KEYWORDS</span>
             <div className="kw-grid">{kw.map(([k, t]) => <div key={k}><b>{k}</b><span>{t}</span></div>)}</div>
           </div>
         </div>
-        <button className="btn dark" onClick={onClose}>Got it</button>
+        <button className="btn dark" onClick={onGotIt ?? onClose}>Got it</button>
       </motion.div>
     </motion.div>
   );
@@ -105,7 +117,7 @@ export function Lobby({ room, onLeave, onCards }: { room: RoomSnapshot; onLeave:
     if (h === me.house) return;
     socket.emit('lobby:house', h);
     const saved = store.deck(h);
-    if (saved) { const e = await sendDeck(saved); if (e) { store.setDeck(h, null); setDeckErr(`Saved deck reset: ${e}`); } }
+    if (saved && !room.vsBot) { const e = await sendDeck(saved); if (e) { store.setDeck(h, null); setDeckErr(`Saved deck reset: ${e}`); } }
   };
   const shownHouse = peek ?? me.house;
   const myList = me.house ? (me.customDeck ? store.deck(me.house) ?? deckList(me.house) : deckList(me.house)) : [];
@@ -173,11 +185,11 @@ export function Lobby({ room, onLeave, onCards }: { room: RoomSnapshot; onLeave:
             <div className="deck-chip">
               <div className="grow">
                 <span className="mono dim">YOUR DECK</span>
-                <strong>{me.customDeck ? 'Custom deck' : 'Starter deck'} · {myList.length} cards</strong>
+                <strong>{me.customDeck && !room.vsBot ? 'Custom deck' : 'Starter deck'} · {myList.length} cards</strong>
                 {deckErr && <span className="error" style={{ fontSize: 12 }}>{deckErr}</span>}
               </div>
-              {me.customDeck && <button className="btn small ghost" onClick={() => { void save(null); }}>Use starter</button>}
-              <button className="btn small" onClick={() => setBuilding(true)}>Build deck</button>
+              {!room.vsBot && me.customDeck && <button className="btn small ghost" onClick={() => { void save(null); }}>Use starter</button>}
+              {!room.vsBot && <button className="btn small" onClick={() => setBuilding(true)}>Build deck</button>}
             </div>
           )}
           <div className="seat-actions">

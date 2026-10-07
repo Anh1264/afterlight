@@ -357,3 +357,7 @@ button { font: inherit; color: inherit; }
 .legends { width: 880px; }
 .b-actions { flex-wrap: wrap; row-gap: 8px; }
 .b-actions .btn { white-space: nowrap; }
+
+/* PR 4: feedback links and 44px tap targets */
+a.btn { text-decoration: none; color: inherit; display: inline-flex; align-items: center; justify-content: center; }
+a.link { color: inherit; }

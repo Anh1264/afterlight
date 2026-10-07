@@ -1,10 +1,12 @@
 import { AnimatePresence, motion, useSpring, useTransform } from 'framer-motion';
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { CARDS, HOUSES, House } from '../../../shared/cards';
+import { CARDS, HOUSES, House, RULES } from '../../../shared/cards';
 import {
-  Action, PIdx, PlayerView, Row, TargetSpec, Unit, activeEffect, legalRows, targetSpecFor, targetable,
+  Action, PIdx, PlayerView, Row, TargetSpec, Unit, activeEffect, legalRows, targetSpecFor, targetable, totals,
 } from '../../../shared/engine';
-import type { RoomSnapshot } from '../../../shared/protocol';
+import { PassOutcome, passMatch, passPromise } from '../../../shared/pass';
+import { TURN_SECONDS, type RoomSnapshot } from '../../../shared/protocol';
+import { FEEDBACK_URL } from '../links';
 import type { Director } from '../director';
 import { socket } from '../net';
 import { CardFace, Sigil } from './Card';
@@ -23,16 +25,18 @@ type Sel = {
 
 const opp = (p: PIdx): PIdx => (p === 0 ? 1 : 0);
 const sum = (us: Unit[]) => us.reduce((s, u) => s + u.power, 0);
+const MATCH_LABEL: Record<'win' | 'lose' | 'draw', string> = { win: 'PASS · WIN MATCH', lose: 'PASS · LOSE MATCH', draw: 'PASS · DRAW MATCH' };
+const PASS_LABEL: Record<PassOutcome, string> = { win: 'PASS · WIN ROUND', tie: 'PASS · TIE ROUND', lose: 'PASS · LOSE ROUND' };
 
 function Num({ value, className, style }: { value: number; className?: string; style?: React.CSSProperties }) {
   const sp = useSpring(value, { stiffness: 140, damping: 20 });
   const txt = useTransform(sp, v => Math.round(v).toString());
   useEffect(() => { sp.set(value); }, [value, sp]);
-  return <motion.span className={className} style={style}>{txt}</motion.span>;
+  return <motion.span className={className} style={style} data-value={value}>{txt}</motion.span>;
 }
 
 function Diamonds({ wins, color }: { wins: number; color: string }) {
-  return <div className="diamonds">{[0, 1].map(i => (
+  return <div className="diamonds">{Array.from({ length: RULES.WINS_NEEDED }, (_, i) => i).map(i => (
     <motion.span key={i} className="diamond" style={{ borderColor: color, background: i < wins ? color : 'transparent' }}
       animate={{ scale: i < wins ? [1, 1.5, 1] : 1 }} transition={{ duration: 0.5 }} />
   ))}</div>;
@@ -42,7 +46,7 @@ function Timer({ deadline }: { deadline: number }) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 250); return () => clearInterval(t); }, []);
   const left = Math.max(0, Math.ceil((deadline - now) / 1000));
-  if (left > 60) return null;
+  if (left > TURN_SECONDS) return null;
   return <span className={`timer${left <= 15 ? ' warn' : ''}`}>{left}s</span>;
 }
 
@@ -190,14 +194,16 @@ export function Game({ room, director, onHome }: { room: RoomSnapshot; director:
 
   // ------------------------------------------------------------ prompt
   const oppPassed = v.players[op].passed;
-  const myTotal = sum(v.players[me].units) + (v.round === 1 && v.first === me ? 1 : 0);
-  const opTotal = sum(v.players[op].units) + (v.round === 1 && v.first === op ? 1 : 0);
+  const t = totals(v);
+  const myTotal = t[me], opTotal = t[op];
+  const promise = passPromise(v, me);
+  const matchEnd = passMatch(v, me);
   let prompt = '';
   if (v.over) prompt = '';
   else if (ds.busy || sending) prompt = '';
   else if (v.players[me].passed) prompt = `You passed. ${v.players[op].name} is playing out the round.`;
   else if (v.current !== me) prompt = `${v.players[op].name} is thinking…`;
-  else if (!sel) prompt = oppPassed ? (myTotal > opTotal ? 'You’re ahead and they passed. Pass to take the round, or keep building.' : 'They passed. Every card you play now triggers Resolve.') : 'Your turn. Drag a card onto a row (or click it), or pass.';
+  else if (!sel) prompt = oppPassed ? (promise === 'win' ? 'You’re ahead and they passed. Pass to take the round, or keep building.' : 'They passed. Every card you play now triggers Resolve.') : 'Your turn. Drag a card onto a row (or click it), or pass.';
   else if (sel.step === 'row') prompt = `Click Front or Back to place ${CARDS[sel.cardId].name}`;
   else if (sel.step === 'mode') prompt = `${CARDS[sel.cardId].name}: choose one`;
   else if (sel.step === 'targets' && unitSpec) prompt = `${unitSpec.prompt}${unitSpec.max > 1 ? ` (${sel.targets.length}/${unitSpec.max})` : ''}`;
@@ -251,7 +257,8 @@ export function Game({ room, director, onHome }: { room: RoomSnapshot; director:
 
   const passLabel = (() => {
     if (!myTurn) return 'PASS';
-    if (oppPassed) return myTotal > opTotal ? 'PASS · WIN ROUND' : myTotal === opTotal ? 'PASS · TIE ROUND' : 'PASS · LOSE ROUND';
+    if (matchEnd) return MATCH_LABEL[matchEnd];
+    if (promise) return PASS_LABEL[promise];
     return passArm ? 'CLICK AGAIN TO PASS' : 'PASS';
   })();
 
@@ -281,8 +288,8 @@ export function Game({ room, director, onHome }: { room: RoomSnapshot; director:
         {renderRow(op, 'B')}
         {renderRow(op, 'F')}
         <div className="divider">
-          <span className="mono">ROUND {v.round} OF 3</span>
-          {v.round === 1 && <span className="chip ghost mono" title="The first player gets +1 in Round 1">FIRST LIGHT +1 · {v.first === me ? 'YOU' : v.players[op].name.toUpperCase()}</span>}
+          <span className="mono">ROUND {v.round} OF {RULES.ROUNDS}</span>
+          {v.round === 1 && <span className="chip ghost mono" title={`The first player gets +${RULES.FIRST_LIGHT} in Round 1`}>FIRST LIGHT +{RULES.FIRST_LIGHT} · {v.first === me ? 'YOU' : v.players[op].name.toUpperCase()}</span>}
           {oppPassed && !v.players[me].passed && <motion.span className="chip solid mono" style={{ background: '#0E0E12' }} initial={{ scale: 0.6 }} animate={{ scale: 1 }}>OPPONENT PASSED · RESOLVE IS LIVE</motion.span>}
           <div className="divider-line" />
         </div>
@@ -366,7 +373,7 @@ export function Game({ room, director, onHome }: { room: RoomSnapshot; director:
       </div>
 
       <div className="actions">
-        <button className={`btn pass${myTurn ? ' live' : ''}${passArm ? ' armed' : ''}${myTurn && oppPassed ? (myTotal > opTotal ? ' good' : ' bad') : ''}`}
+        <button className={`btn pass${myTurn ? ' live' : ''}${passArm ? ' armed' : ''}${myTurn && promise ? ((matchEnd ?? promise) === 'win' ? ' good' : ' bad') : ''}`}
           disabled={!myTurn}
           onClick={() => {
             if (oppPassed) return send({ type: 'pass' });
@@ -430,6 +437,7 @@ function EndScreen({ v, room, onHome }: { v: PlayerView; room: RoomSnapshot; onH
             {asked ? 'Waiting for opponent…' : theyAsked ? 'Accept rematch' : 'Rematch'}
           </button>
           <button className="btn ghost" onClick={onHome}>Home</button>
+          {FEEDBACK_URL && <a className="btn ghost" href={FEEDBACK_URL} target="_blank" rel="noopener noreferrer">Give feedback</a>}
         </div>
       </motion.div>
     </motion.div>
