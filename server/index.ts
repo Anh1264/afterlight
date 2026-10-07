@@ -57,7 +57,7 @@ app.get('/health', (_req, res) => res.json({ ok: true, rooms: rooms.size }));
 if (fs.existsSync(DIST)) {
   app.use(express.static(DIST, { maxAge: '1h', index: false, setHeaders: (res, file) => { if (file.endsWith('manifest.json')) res.setHeader('Cache-Control', 'no-cache'); } }));
   app.use('/art', (_req, res) => { res.status(404).end(); });
-  app.use((_req, res) => res.sendFile(path.join(DIST, 'index.html')));
+  app.use((_req, res) => res.sendFile('index.html', { root: DIST }));
 }
 const http = createServer(app);
 const io = new Server<ClientToServer, ServerToClient>(http, { cors: { origin: true } });

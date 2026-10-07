@@ -8,12 +8,14 @@ Online Gwent-style card game: best of 3 rounds, 4 houses + Neutral, PvP by share
 - `server/` - Express (serves the built client and art) + Socket.IO. Authoritative: it owns every GameState.
 - `client/` - React 19 + Vite + framer-motion. `director.ts` replays server event batches as animations.
 - `docs/` - specs, decisions (ADRs), backlog, art briefs, balance reports.
-- `e2e/` - Playwright tests (backlog T1). `e2e/out/` holds screenshots and reports and is gitignored.
+- `e2e/` - Playwright tests (`*.spec.ts`, shared steps in `e2e/helpers.ts`). `e2e/out/` holds screenshots and reports and is gitignored.
 
 ## Commands
 - `npm run dev` - server :3001 + client :5173 (also registered as the Code tab preview in .claude/launch.json)
 - `npm run check` - typecheck + tests. THE gate: a commit is blocked if this fails (.claude/hooks/guard-bash.mjs).
-- `npm test` - engine tests. `npm run sim -- 200` - fuzz + bot-vs-bot balance matrix.
+- `npm test` - vitest: engine tests + a fuzz-lite pass. `npm run sim -- 200` - full fuzz + bot-vs-bot balance matrix.
+- `npm run e2e` - Playwright smoke: builds the client, starts the server on :3101 and plays a bot match to the end. `E2E_BASE_URL=<url>` runs it against another host instead. First time on a machine: `npx playwright install chromium`.
+- CI (.github/workflows/ci.yml): check + build + audit on every PR and every push to main; e2e on PRs only.
 - `npm run build` / `npm start` - what Railway runs.
 
 ## Invariants (never break these; reviewers block on them)
@@ -67,7 +69,7 @@ Escalation: if a sonnet developer fails the gate twice on the same task, rerun t
 
 ## Definition of done
 - Every acceptance criterion has a test that fails without the change.
-- `npm run check` is green (and e2e, once T1 lands).
+- `npm run check` and `npm run e2e` are green.
 - code-reviewer verdict is APPROVE. For client changes, ux-reviewer screenshots at both sizes are attached.
 - docs/backlog.md status updated; README card tables regenerated if cards changed.
 
