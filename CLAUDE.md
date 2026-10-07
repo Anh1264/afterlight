@@ -15,7 +15,7 @@ Online Gwent-style card game: best of 3 rounds, 4 houses + Neutral, PvP by share
 - `npm test` - vitest + fuzz-lite. `npm run check` - typecheck + tests; the commit hook (.claude/hooks/guard-bash.mjs) blocks commits while it fails.
 - `npm run e2e` - builds, serves on :3101, plays a bot match. `E2E_BASE_URL=<url>` targets another host; first run on a machine needs `npx playwright install chromium`.
 - `npm run sim -- 200` - full fuzz + bot-vs-bot balance matrix.
-- `npm run build` / `npm start` - what Railway runs. CI: check + build + audit on PRs and pushes to main; e2e on PRs.
+- `npm run build` / `npm start` - what Railway runs. CI (.github/workflows/ci.yml): check + build + audit on PRs and pushes to main; e2e on PRs.
 
 ## Invariants (reviewers block on these)
 1. Engine is pure and deterministic: same (seed, decks, first, actions) -> same events. No I/O, Date or Math.random in shared/engine.
