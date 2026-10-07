@@ -7,10 +7,11 @@
     "dev": "node scripts/art-manifest.mjs && concurrently -k -n server,client \"tsx watch server/index.ts\" \"vite\"",
     "build": "node scripts/art-manifest.mjs && vite build",
     "start": "tsx server/index.ts",
-    "test": "tsx shared/engine.test.ts",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit -p .",
     "check": "npm run -s typecheck && npm test",
-    "sim": "tsx shared/simulate.ts"
+    "sim": "tsx shared/simulate.ts",
+    "e2e": "playwright test"
   },
   "engines": {
     "node": ">=20"
@@ -22,6 +23,7 @@
     "typescript": "^7.0.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.4",
     "@types/react": "^19.3.0",
@@ -32,6 +34,7 @@
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "socket.io-client": "^4.8.4",
-    "vite": "^8.3.2"
+    "vite": "^8.3.2",
+    "vitest": "^5.0.3"
   }
 }
