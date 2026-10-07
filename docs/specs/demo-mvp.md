@@ -411,6 +411,20 @@ Architect, Tue 2026-10-06. Designed against PR 1 as built (worktree `t1-test-gat
   - **og.jpg A is recaptured** with a tighter crop. The ux pass judged A clearly better than B as a link preview, at both 500x262 and 150x79.
   - **Deferred to the backlog:** C17 (tablet layout of the phone screen), C18 (fullscreen discoverability), C19 (remember ended codes) and C20 (portrait rotate hint).
 
+**Orchestrator rulings after the PR 2b review and the Oct 7 merges (Wed Oct 7):**
+- **PR 2b closes the connection caps in three layers**, because review proved a bypass for each single layer:
+  - an engine.io cap per IP in `allowRequest` of `max(2 × maxSocketsPerIp, maxSocketsPerIp + 1)`. The `+ 1` keeps the friendly text reachable when `maxSocketsPerIp` is 0, which PR 5's harness uses.
+  - a packet guard: a second Socket.IO CONNECT on one engine connection, while the first is pending or admitted, closes that connection. socket.io 4 builds a Socket for every CONNECT before any middleware runs, so one 300 KB request cost about 300 MB until this guard.
+  - the `io.use` caps with the `connect_error` text.
+- **Review cycles.** PR 2b's cycle 2 returned CHANGES for one line, and the reviewer had already checked its own fix. That fix went test first and then through a delta check (APPROVE), not a third cycle. The rule stays: a contested or larger cycle-2 finding goes to Aiden.
+- **PR 6: a silenced unit's inspect panel lists only its statuses**, Silenced first, with no keyword paragraphs. Silence clears the keyword flags (engine.ts:390, :496) and Last Words (:170), so listing those keywords contradicted the engine. It also overflowed the panel by 71 stage px. The tightest reachable case is now Odric with Guard, Shield, Poison and Grow, with 23.6 stage px of headroom at 1366x650.
+- **PR 5:**
+  - **ux6 wins over the c8 double-click test.** The busy button stays disabled ("Connecting...") through the retry. c8 now force-clicks it and still checks for one lobby and one history entry.
+  - **Screens.tsx joins PR 5's files** for the Home notice and the busy label. PR 5 merges main after PR 4 and resolves any overlap there.
+  - **The socket handshake timeout is 5 s** (`timeout` in `io()`, net.ts). A reconnect that hangs on a dead network now fails in 5 s instead of 20 s, so the overlay clears promptly after a brief drop.
+  - **Every `socket.connect()` call checks `!socket.active`**, because 2b's packet guard turns a second CONNECT into a dropped connection.
+- **Merge order on Oct 7:** #4 (2a) merged 25 s before #3 (PR 4), the reverse of the planned order. Main is correct now. If Railway deployed 2a on its own in that window, a bot match started with a saved custom deck would have reset that deck. The link was not public yet.
+
 ### Approach
 - **PR 2** ships as 2a (crash-proofing, seats, DM-2, DM-8) and then 2b (abuse limits, funnel log, `/health` counters).
   - `server/index.ts` becomes a thin entry point over a `createGameServer(opts)` factory in `server/app.ts`.
