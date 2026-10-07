@@ -9,8 +9,8 @@ import { TURN_SECONDS, type RoomSnapshot } from '../../../shared/protocol';
 import { FEEDBACK_URL } from '../links';
 import type { Director } from '../director';
 import { socket } from '../net';
-import { CardFace, Sigil } from './Card';
-import { KeywordHelp, TokenCard } from './Help';
+import { CardFace, CardTextBody, PowerBadge, Sigil } from './Card';
+import { KeywordHelp } from './Help';
 import { Rules } from './Screens';
 import { housePSrc } from '../art';
 import { Banners, FxLayer } from './Fx';
@@ -307,7 +307,14 @@ export function Game({ room, director, onHome }: { room: RoomSnapshot; director:
           <AnimatePresence mode="wait">
             {inspect ? (
               <motion.div key={(inspect.cardId ?? inspect.unit?.uid) + String(inspect.power ?? '')} className="inspect-body" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
-                {inspect.cardId ? <CardFace cardId={inspect.cardId} scale={0.44} power={inspect.power} /> : <TokenCard u={inspect.unit!} />}
+                {inspect.cardId ? (
+                  <div className="card-text inspect-text"><CardTextBody cardId={inspect.cardId} withPower power={inspect.power} base={inspect.unit?.base} /></div>
+                ) : inspect.unit ? (
+                  <div className="card-text inspect-text">
+                    <span className="mono" style={{ color: HOUSES[inspect.unit.house].accent }}>TOKEN</span>
+                    <div className="name-row"><h2>{inspect.unit.name}</h2><PowerBadge power={inspect.unit.power} base={inspect.unit.base} /></div>
+                  </div>
+                ) : null}
                 <KeywordHelp cardId={inspect.cardId} unit={inspect.unit} />
               </motion.div>
             ) : (

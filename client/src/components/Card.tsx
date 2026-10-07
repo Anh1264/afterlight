@@ -24,6 +24,35 @@ function rgba(hex: string, a: number) {
   return `rgba(${parseInt(h.slice(0, 2), 16)},${parseInt(h.slice(2, 4), 16)},${parseInt(h.slice(4, 6), 16)},${a})`;
 }
 
+/** Stacked POWER label and number, shown beside the name in the inspect panel. */
+export function PowerBadge({ power, base }: { power: number; base?: number }) {
+  const look = base === undefined || power === base ? '' : power > base ? ' up' : ' down';
+  return <span className="card-pow"><span className="mono">POWER</span><b className={look.trim()}>{power}</b></span>;
+}
+
+/** Epithet, name and ability lines: shared by the card face and the readable inspect panel. `withPower` adds the name-row power readout (units only; `power` overrides the shown power, like CardFace; `base` is the unit's own base for the boosted/damaged colour, defaulting to the card's). */
+export function CardTextBody({ cardId, withPower, power, base }: { cardId: string; withPower?: boolean; power?: number; base?: number }) {
+  const d = CARDS[cardId];
+  const shown = withPower && d.kind === 'unit' ? (power ?? d.power) : undefined;
+  const H = HOUSES[d.house];
+  return (
+    <>
+      <span className="mono" style={{ color: H.accent, fontSize: 11 }}>{d.epithet}</span>
+      {withPower ? (
+        <div className="name-row">
+          <h2>{d.name}</h2>
+          {shown !== undefined && <PowerBadge power={shown} base={base ?? d.power} />}
+        </div>
+      ) : <h2>{d.name}</h2>}
+      <div className="abilities">
+        {d.text.length ? d.text.map((ab, i) => (
+          <div key={i}>{ab.kw && <strong style={{ color: H.accent }}>{ab.kw}</strong>} {ab.t}</div>
+        )) : <div style={{ color: '#6A6470' }}>No ability. Raw power.</div>}
+      </div>
+    </>
+  );
+}
+
 /** Full card face, designed at 500x700 and scaled. */
 export function CardFace({ cardId, scale = 1, power, dim }: { cardId: string; scale?: number; power?: number; dim?: boolean }) {
   const d = CARDS[cardId];
@@ -66,15 +95,7 @@ export function CardFace({ cardId, scale = 1, power, dim }: { cardId: string; sc
         <div className={`abs tier-gem tier-${d.tier.toLowerCase()}`} title={d.tier}>
           <svg viewBox="0 0 20 20"><path d="M10 1 L19 10 L10 19 L1 10 Z" /></svg>
         </div>
-        <div className="abs card-text" style={{ width: art?.textW ?? 320, background: rgba(H.paper, 0.78) }}>
-          <span className="mono" style={{ color: H.accent, fontSize: 11 }}>{d.epithet}</span>
-          <h2>{d.name}</h2>
-          <div className="abilities">
-            {d.text.length ? d.text.map((ab, i) => (
-              <div key={i}>{ab.kw && <strong style={{ color: H.accent }}>{ab.kw}</strong>} {ab.t}</div>
-            )) : <div style={{ color: '#6A6470' }}>No ability. Raw power.</div>}
-          </div>
-        </div>
+        <div className="abs card-text" style={{ width: art?.textW ?? 320, background: rgba(H.paper, 0.78) }}><CardTextBody cardId={cardId} /></div>
         <div className="abs card-foot">
           <div style={{ background: H.frame }} />
           <span className="mono" style={{ background: H.paper }}>{d.tier} · {d.house}</span>
