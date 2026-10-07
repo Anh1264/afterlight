@@ -377,6 +377,9 @@ Architect, Tue 2026-10-06. Designed against PR 1 as built (worktree `t1-test-gat
   - **Copy without rule numbers or hidden features.** og:description: "Play cards, pass at the right moment, win the duel. Free in your browser, against the bot." Phone-screen pitch: "A two-player card duel against a bot, free in your browser."
   - **Fullscreen in the match** is a "Fullscreen" button in Game.tsx’s bottom-right action row, because the fixed top-right icon covers the opponent’s total when the stage fills the window. This is the only exception to "Game.tsx is PR 4 only". Home and the lobbies keep the icon, and only one fullscreen button is ever in the DOM.
   - **og.jpg.** Only the 12 Legends have art, so a random mid-match board is mostly placeholders. Two candidates go to Aiden: a crop of Home’s Legend fan (A, the default) and a board with Legends in play plus the preview panel (B).
+- **C12 joins the demo as a sixth, small client PR (`fix/C12-readable-inspect`).** The PR 4 ux pass set the condition "fix if a card’s text can’t be read on hover", and the PR 3 ux check measured it: in a match, the inspect panel (the only place to read a card) renders rules text at 5.7 px and keyword help at 9 px at 1366x650.
+  - Acceptance: at inner 1366x650, the inspected card’s rules text and keyword help render at 12 CSS px or more, nothing in the right column overlaps, and 1440x900 is no worse.
+  - It branches from PR 4’s commit and merges main after PR 4. It touches Game.tsx’s inspect panel and styles.css only.
 
 ### Approach
 - **PR 2** ships as 2a (crash-proofing, seats, DM-2, DM-8) and then 2b (abuse limits, funnel log, `/health` counters).

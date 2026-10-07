@@ -14,6 +14,7 @@ Spec and design: docs/specs/demo-mvp.md. Feature PRs don't edit this file; the o
 | 3 Bot Round 1 and card text | DM-1, DM-3 | build (review cycle 1 fixes in progress) |
 | 4 Truth on screen and the demo surface | P0-3, DM-4 | review (#3) |
 | 5 Phones, link preview and recovery | DM-5, DM-7, C4 | tests first |
+| 6 Readable cards in a match | C12 | tests first |
 
 | ID | Area | Size | Item | Status |
 | --- | --- | --- | --- | --- |
@@ -80,10 +81,14 @@ Spec and design: docs/specs/demo-mvp.md. Feature PRs don't edit this file; the o
 | C9 | client | S | Rules numbers still hard-coded outside PR 4's files: Gallery.tsx:7 and :19 ("MAX 1/2/3", "Legend ×1, Rare ×2, Common ×3") should read `DECK_RULES`, and Game.tsx "WAITING 60s" repeats the server's drop grace (PvP only). Found in the PR 4 review. | todo |
 | C10 | client | S | First Light is hard to see: at 1366x650 the divider chip renders at about 8 px in dim grey, so the holder's total is 2 more than its rows add up to with no visible reason. Show the bonus next to the holder's total in Round 1, or make the chip legible. Found in the PR 4 ux pass. | todo |
 | C11 | client | S | The first-visit How to play shows 17 keywords at about 10 px beside the 5 steps: a wall of text for a first impression. Consider showing only the steps there and pointing to the in-game "Rules & keywords". Found in the PR 4 ux pass. | todo |
-| C12 | client | S | At inner 1366x650 the hand cards are clipped at the bottom of the stage (names readable, ability text cut). Check at Friday's ux pass; fix if a card's text can't be read on hover. Found in the PR 4 ux pass. | todo |
+| C12 | client | S | In a match a card can’t be read: the right-hand inspect panel, the only reading surface, renders rules text at 5.7 px and keyword help at 9 px at 1366x650 (7.1 and 11.3 px at 1440x900). Target 12 px or more at 1366x650. Same panel: hand cards are clipped at the bottom of the stage at inner 1366x650. Promoted into the demo by the condition set in the PR 4 ux pass ("fix if a card’s text can’t be read on hover"), with measurements from the PR 3 ux check. Branch `fix/C12-readable-inspect`. | build |
 | C13 | client | S | When the pass button reads PASS · WIN MATCH, the hint above the hand still says "Pass to take the round, or keep building". Say "match" when passing ends the match (Game.tsx `prompt`). Found in the PR 4 final ux pass. | todo |
+| C14 | client | S | Drake-07’s taller text panel (4 lines since PR 3) hides the feet in its art. Move the art up about 50 px (`client/src/art.ts`, `ART.drake.ay` -120 to about -170). Needs Aiden’s eye. Found in the PR 3 ux check. | todo |
+| C15 | client | S | The "Your turn…" prompt pill covers the top of a lifted hand card, including its power. Board tiles cut long names ("Quartermaste"), and a token’s "ECHO" label sits partly under its power badge. Found in the PR 3 ux check. | todo |
+| C16 | client | S | Readability outside the match: the gallery zoom’s keyword help is 10.8 px at 1366x650, and the deck builder has no readable view of a card’s rules text (3.5-4.4 px; the builder is hidden in the demo). Some long names (High Marshal Odric, The Fallen Colossus, Mercenary Captain, The Lantern Keeper) are wider than their text panel. Found in the PR 3 ux check. | todo |
 | E5 | engine | S | engine.ts:104 seeds with `Math.random` when no seed is passed, a gap against invariant 1 (determinism). Require a seed, or move the default to the server. Found in the demo design challenge. | todo |
 | E6 | engine | S | Null-9 and Puppeteer text leaves out what seize does at the edges: the taken unit loses Poison, and moves to the other row when its own row is full (engine.ts:555-565). Afterimage does not say which unit it copies when two are tied for strongest (the engine takes the one that reached the board first, engine.ts:542), which decides the Echo’s row. Text only. Found by game-designer during PR 3. | todo |
+| E7 | engine | S | Two words for one thing: Drake-07 says "Summon a 3-power Echo" while Glitch Rat, Static Runner, Shard Bot and Gridlock Golem say "Summon a 3/2-power token". Lattice and Wire Hound show the Echo tooltip for "tokens"; a separate "Token" keyword would be more accurate. game-designer to pick one wording; re-check Drake’s wrap (its text box is 300 px). Found in the PR 3 ux check. | todo |
 | O5 | ops | M | Staging environment: a Railway environment that deploys from a `staging` branch. Today production is the only place the full stack runs. | todo |
 | O6 | ops | S | Version releases: package.json still says 0.1.0 and there are no git tags. Tag each deploy (pairs with the build SHA in O3). | todo |
 | O7 | ops | S | Bump `concurrently` (2 critical audit issues in `shell-quote`, dev-only). | todo |
