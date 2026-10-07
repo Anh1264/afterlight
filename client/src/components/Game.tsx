@@ -355,7 +355,7 @@ export function Game({ room, director, onHome }: { room: RoomSnapshot; director:
             const isSel = sel?.uid === c.uid;
             return (
               <motion.div key={c.uid} layoutId={c.uid} className={`hand-card${isSel ? ' sel' : ''}${myTurn ? ' live' : ''}`}
-                style={{ zIndex: isSel ? 50 : i, left: 480 + off * spread - 75 }}
+                style={{ zIndex: isSel ? 50 : i, left: `calc(50% + ${off * spread - 79}px)` }}
                 initial={{ y: 200, opacity: 0 }}
                 animate={{ y: isSel ? -70 : Math.abs(off) * Math.abs(off) * 2.2, rotate: isSel ? 0 : off * 2.4, opacity: 1 }}
                 whileHover={{ y: isSel ? -70 : -40, rotate: 0, scale: 1.08, zIndex: 60, transition: { duration: 0.15 } }}
