@@ -1,5 +1,6 @@
 // Test seams for server tests (PR 2a). Real servers on a random port, real Socket.IO clients, no fake timers.
 // Not imported by production code.
+import WebSocket from 'ws';
 import { io, type Socket } from 'socket.io-client';
 import { CARDS, type House } from '../shared/cards';
 import { activeEffect, legalRows, targetSpecFor, type Action, type PlayerView } from '../shared/engine';
@@ -150,4 +151,87 @@ export function firstSimplePlay(view: PlayerView): Action {
     return { type: 'play', uid: c.uid, row };
   }
   return { type: 'pass' };
+}
+
+// ------------------------------------------------------------------ 2b helpers
+/**
+ * ServerOptions with fields PR 2b adds (`trustProxy`, `buildSha`, abuse limits). A cast, so the tests typecheck
+ * before and after 2b; before 2b the server ignores the extra fields and the tests fail on behaviour.
+ */
+export const as2b = (o: object): ServerOptions => o as ServerOptions;
+
+export const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
+
+const isRec = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
+
+/** GET /health as an object (status must be 200). */
+export async function health(url: string): Promise<Record<string, unknown>> {
+  const res = await fetch(`${url}/health`);
+  if (res.status !== 200) throw new Error(`/health answered ${res.status}`);
+  const j: unknown = await res.json();
+  if (!isRec(j)) throw new Error('/health is not an object');
+  return j;
+}
+
+export async function roomCount(url: string): Promise<number> {
+  const n = (await health(url)).rooms;
+  if (typeof n !== 'number') throw new Error('/health.rooms is not a number');
+  return n;
+}
+
+/** Poll `read` until it returns `want` (deep equality by JSON), or throw with the last value after `ms`. */
+export async function until<T>(what: string, read: () => Promise<T> | T, want: T, ms = 3000): Promise<void> {
+  const t0 = Date.now();
+  let last: T = await read();
+  while (JSON.stringify(last) !== JSON.stringify(want)) {
+    if (Date.now() - t0 > ms) throw new Error(`timed out after ${ms} ms waiting for ${what} to be ${JSON.stringify(want)} (last: ${JSON.stringify(last)})`);
+    await sleep(25);
+    last = await read();
+  }
+}
+
+/** The created room's `{code, token}`, or throws with what came back. */
+export async function createRoom(s: Socket, vsBot: boolean, name = 'Ann'): Promise<{ code: string; token: string }> {
+  const r = await ask(s, 'room:create', { name, vsBot });
+  if (!isRec(r) || typeof r.code !== 'string' || typeof r.token !== 'string') throw new Error('room:create failed: ' + JSON.stringify(r));
+  return { code: r.code, token: r.token };
+}
+
+/** Two sockets in a started PvP match: a (creator, seat 0, COVEN) and b (joiner, seat 1, ORDER). */
+export async function pvpMatch(url: string, o: { nameA?: string; nameB?: string; ipA?: string; ipB?: string } = {}) {
+  const a = client(url, { ip: o.ipA }), b = client(url, { ip: o.ipB });
+  await Promise.all([next(a, 'connect'), next(b, 'connect')]);
+  const { code, token: tokenA } = await createRoom(a, false, o.nameA ?? 'Ann');
+  const joined = await ask(b, 'room:join', { code, name: o.nameB ?? 'Bo' });
+  if (!isRec(joined) || typeof joined.token !== 'string') throw new Error('join failed: ' + JSON.stringify(joined));
+  a.emit('lobby:house', 'COVEN'); b.emit('lobby:house', 'ORDER');
+  a.emit('lobby:ready', true); b.emit('lobby:ready', true);
+  const [ga, gb] = await Promise.all([next<GameMsg>(a, 'game', () => true, 3000), next<GameMsg>(b, 'game', () => true, 3000)]);
+  return { a, b, code, tokenA, tokenB: joined.token, ga, gb };
+}
+
+export const isMyTurn = (g: GameMsg) => g.view.current === g.view.me && !g.view.over && g.ended === undefined;
+
+/** Human passes every turn (never plays a card) until the match is over or the server ended it. Returns the last message. */
+export async function passUntilEnd(s: Socket, first: GameMsg): Promise<GameMsg> {
+  let g = first;
+  for (let i = 0; i < 30; i++) {
+    if (g.ended || g.view.over) return g;
+    if (isMyTurn(g)) await ask(s, 'game:action', { type: 'pass' });
+    g = await next<GameMsg>(s, 'game', m => m.ended !== undefined || m.view.over || isMyTurn(m), 3000);
+  }
+  throw new Error('match never ended by passing');
+}
+
+/**
+ * A raw engine.io websocket (no Socket.IO client): resolves with it once the engine "open" packet arrives,
+ * or with `null` if the server refused the upgrade. It never sends a namespace CONNECT unless the test does.
+ */
+export function rawEngine(url: string, ip?: string): Promise<WebSocket | null> {
+  const ws = new WebSocket(`${url.replace(/^http/, 'ws')}/socket.io/?EIO=4&transport=websocket`, { headers: ip ? { 'x-real-ip': ip } : {} });
+  return new Promise(resolve => {
+    ws.once('message', () => resolve(ws));
+    ws.once('error', () => resolve(null));
+    ws.once('unexpected-response', () => { ws.terminate(); resolve(null); });
+  });
 }

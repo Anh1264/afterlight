@@ -1,4 +1,7 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { spawn } from 'node:child_process';
+import { Socket as ServerSocket } from 'socket.io';
+import { fileURLToPath } from 'node:url';
 import type { Socket } from 'socket.io-client';
 import { STARTERS, validateDeck, type House } from '../shared/cards';
 import { BAD_REQUEST, GENERIC_ERROR, TURN_SECONDS, type GameMsg, type RoomSnapshot } from '../shared/protocol';
@@ -6,7 +9,7 @@ import { mulberry, randomDeck } from '../shared/sim';
 import { DEFAULT_LIMITS } from './limits';
 import type { ServerOptions } from './app';
 import {
-  ask, bootServer, client, firstSimplePlay, next, received, startBotMatch,
+  ask, bootServer, client, firstSimplePlay, next, received, startBotMatch, until,
   type Booted, type LogLine,
 } from './testkit';
 
@@ -296,6 +299,26 @@ describe('c3 errors inside the server end that match, not the process', () => {
     armed = false;
     const second = await startPvp(url);
     expect(second.ga.view.over).toBe(false);
+  });
+
+  it('c3: after the server ended a PvP match, both seated sockets have left the room channel', async () => {
+    const leave = vi.spyOn(ServerSocket.prototype, 'leave');
+    try {
+      let armed = true;
+      const { url } = await boot({
+        limits: { turnMs: 50 },
+        hooks: { onTimer: kind => { if (armed && kind === 'turn') throw new Error('turn exploded'); } },
+      });
+      const { a, b, code } = await startPvp(url);
+      await expectEndedBy(a, 'error');
+      await expectEndedBy(b, 'error');
+      armed = false;
+      await sleep(100); // no disconnect has happened, so drop() has not left the channel for them
+      const leavers = new Set(leave.mock.calls.flatMap((c, i) => (c[0] === code ? [(leave.mock.contexts[i] as { id: string }).id] : [])));
+      expect([...leavers].sort()).toEqual([a.id, b.id].sort());
+    } finally {
+      leave.mockRestore();
+    }
   });
 
   it('c3: an error in the disconnect-grace timer ends the PvP match for the seat that stayed', async () => {
@@ -670,5 +693,276 @@ describe('c8 starter decks only against the bot', () => {
     s.emit('lobby:house', 'COVEN');
     expect(await ask(s, 'lobby:deck', customDeck('COVEN'))).toEqual({ ok: true });
     await next<RoomSnapshot>(s, 'room', r => r.seats[0]?.customDeck === true);
+  });
+});
+
+// ============================================================================ moved from the PR 2a review (2b)
+const LINK_GONE = 'That match link has expired or never existed.';
+const ALREADY_FULL = /already full/i;
+
+describe('2b (moved) room:join code length and the single bad_request log point', () => {
+  it('moved 1: a code string of 17+ characters gets BAD_REQUEST, one bad_request line (event and field, never the value) and rejected +1', async () => {
+    const { url, logs } = await boot();
+    const a = await connect(url);
+    const before = (await healthJson(url)).counts;
+    const long = 'ABCDEFGHJKLMNPQRS'; // 17 chars from the alphabet
+    expect(long).toHaveLength(17);
+    expect(await ask(a, 'room:join', { code: long, name: 'Eve' })).toEqual({ error: BAD_REQUEST });
+    expect(await ask(a, 'room:join', { code: 'ABCDE'.repeat(40), name: 'Eve' })).toEqual({ error: BAD_REQUEST });
+    const lines = logs.filter(l => l.message === 'bad_request');
+    expect(lines).toHaveLength(1); // the second is the same event+field inside a minute
+    expect(lines[0]).toMatchObject({ level: 'warn', event: 'room:join', field: 'code' });
+    expect(JSON.stringify(lines)).not.toContain('ABCDEFGHJKLMNPQRS');
+    const after = (await healthJson(url)).counts;
+    if (!isObj(before) || !isObj(after)) throw new Error('/health.counts missing');
+    expect(Number(after.rejected) - Number(before.rejected)).toBe(2);
+  });
+
+  it('moved 1: a 4-16 character malformed string still gets "That match link has expired or never existed."', async () => {
+    const { url } = await boot();
+    const a = await connect(url);
+    for (const code of ['ab!c', '0O1I2', 'ABCDEFGHJKLMNPQR' /* 16: the boundary */, 'not a code at al' /* 16 */]) {
+      expect(await ask(a, 'room:join', { code, name: 'Eve' }), code).toEqual({ error: LINK_GONE });
+    }
+  });
+});
+
+describe('2b (moved) a join that cannot succeed must not cost the socket its current match', () => {
+  /** A socket in a bot match, with the match's first my-turn message. */
+  async function seatedElsewhere(url: string) {
+    const m = await bot(url);
+    return m;
+  }
+  async function stillRunning(url: string, m: Awaited<ReturnType<typeof seatedElsewhere>>, roomsExpected: number) {
+    expect(await rooms(url)).toBe(roomsExpected);
+    await playOne(m.s, m.game);
+    await next<GameMsg>(m.s, 'game', g => g.events.some(e => e.t === 'play' && e.p === g.view.me));
+    expect(received<GameMsg>(m.s, 'game').some(g => g.view.over || g.ended !== undefined)).toBe(false);
+    expect(received<string>(m.s, 'toast')).toEqual([]);
+  }
+
+  it('moved 2: following a link to a full lobby gets the error and the current match is not forfeited or released', async () => {
+    const { url, logs } = await boot();
+    const m = await seatedElsewhere(url);
+    const host = await connect(url), guest = await connect(url);
+    const hosted = await ask(host, 'room:create', { name: 'Hal', vsBot: false });
+    if (!isObj(hosted) || typeof hosted.code !== 'string') throw new Error('create failed');
+    expect(errText(await ask(guest, 'room:join', { code: hosted.code, name: 'Gus' }))).toBeUndefined();
+    expect(await rooms(url)).toBe(2);
+
+    expect(errText(await ask(m.s, 'room:join', { code: hosted.code, name: 'Ann' }))).toMatch(ALREADY_FULL);
+    await stillRunning(url, m, 2);
+    expect(logs.filter(l => l.message === 'match_end')).toEqual([]);
+  });
+
+  it('moved 2: following a link to a room already playing, where the socket has no seat, gets the error and the current match goes on', async () => {
+    const { url } = await boot();
+    const m = await seatedElsewhere(url);
+    const pv = await startPvp(url);
+    expect(await rooms(url)).toBe(2);
+    expect(errText(await ask(m.s, 'room:join', { code: pv.code, name: 'Ann' }))).toMatch(ALREADY_FULL);
+    // a well-formed token that belongs to no seat is no different
+    expect(errText(await ask(m.s, 'room:join', { code: pv.code, name: 'Ann', token: 'a'.repeat(32) }))).toMatch(ALREADY_FULL);
+    await stillRunning(url, m, 2);
+    // the PvP match is untouched too
+    expect(received<GameMsg>(pv.a, 'game').some(g => g.view.over)).toBe(false);
+  });
+
+  it('moved 2: a join that can succeed still releases the old match (c6 stays true)', async () => {
+    const { url } = await boot();
+    const m = await seatedElsewhere(url);
+    const host = await connect(url);
+    const hosted = await ask(host, 'room:create', { name: 'Hal', vsBot: false });
+    if (!isObj(hosted) || typeof hosted.code !== 'string') throw new Error('create failed');
+    expect(errText(await ask(m.s, 'room:join', { code: hosted.code, name: 'Ann' }))).toBeUndefined();
+    expect(await rooms(url)).toBe(1);
+  });
+});
+
+describe('2b (moved) release() leaves nothing behind', () => {
+  it('moved 3: after create-then-create-again from a bot lobby, no long keep-timer is armed on the removed seat', async () => {
+    const realSet = globalThis.setTimeout, realClear = globalThis.clearTimeout;
+    const live = new Set<unknown>();
+    const { url } = await boot();
+    const s = await connect(url);
+    const setSpy = vi.spyOn(globalThis, 'setTimeout').mockImplementation(((cb: () => void, ms?: number) => {
+      const h = realSet(cb, ms);
+      if (typeof ms === 'number' && ms >= 60_000) live.add(h); // the 10-minute lobby keep-timer; nothing else in this test waits a minute
+      return h;
+    }) as unknown as typeof setTimeout);
+    const clearSpy = vi.spyOn(globalThis, 'clearTimeout').mockImplementation(((h?: NodeJS.Timeout) => { live.delete(h); realClear(h); }) as typeof clearTimeout);
+    try {
+      expect(isObj(await ask(s, 'room:create', { name: 'Ann', vsBot: true }))).toBe(true);
+      expect(isObj(await ask(s, 'room:create', { name: 'Ann', vsBot: true }))).toBe(true);
+      expect(await rooms(url)).toBe(1);
+      expect(live.size, 'long timers still armed after release()').toBe(0);
+    } finally {
+      setSpy.mockRestore();
+      clearSpy.mockRestore();
+      for (const h of live) realClear(h as NodeJS.Timeout);
+    }
+  });
+
+  it('moved 3: a socket that left a lobby gets no toast when the player who took its seat later disconnects (it left the Socket.IO room channel)', async () => {
+    const { url } = await boot({ limits: { dropGraceMs: 5000 } });
+    const a = await connect(url), b = await connect(url), c = await connect(url);
+    const made = await ask(a, 'room:create', { name: 'Ann', vsBot: false });
+    if (!isObj(made) || typeof made.code !== 'string') throw new Error('create failed');
+    expect(errText(await ask(b, 'room:join', { code: made.code, name: 'Bo' }))).toBeUndefined();
+    b.emit('room:leave');
+    await ask(b, 'game:action', { type: 'pass' }); // barrier: the leave has been handled
+    expect(errText(await ask(c, 'room:join', { code: made.code, name: 'Cy' }))).toBeUndefined();
+    a.emit('lobby:house', 'COVEN'); c.emit('lobby:house', 'ORDER');
+    a.emit('lobby:ready', true); c.emit('lobby:ready', true);
+    await next<GameMsg>(a, 'game');
+    c.close();
+    await next<string>(a, 'toast', t => /disconnected/.test(t)); // the room's channel toast reaches the seat that stayed
+    await sleep(150);
+    expect(received<string>(b, 'toast')).toEqual([]);
+    expect(b.connected).toBe(true);
+  });
+});
+
+describe('2b (moved) failRoom after the match-ending move', () => {
+  /** Arm `arm()` when `ready(g)` holds; the human never plays a card, so it is never ahead. */
+  async function untilEndedByThrow(mode: 'handler' | 'timer') {
+    let armed = false, thrown = false;
+    const { url, logs } = await boot({
+      botDelayMs: mode === 'timer' ? () => 150 : () => 0,
+      hooks: { onView: () => { if (armed && !thrown) { thrown = true; throw new Error('view exploded at the end'); } } },
+    });
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const m = await bot(url);
+      let g = m.game;
+      for (let i = 0; i < 12; i++) {
+        const me = g.view.me;
+        const opp = g.view.players[me === 0 ? 1 : 0];
+        if (mode === 'handler' && g.view.round >= 2 && opp.passed && opp.wins >= 1) {
+          // my pass ends the round, the bot has a win and at least ties it: the match is over
+          armed = true;
+          expect(await ask(m.s, 'game:action', { type: 'pass' })).toEqual({ error: GENERIC_ERROR });
+          return { url, logs, s: m.s };
+        }
+        if (mode === 'timer' && g.view.round >= 2 && g.view.players[me].passed && !opp.passed && opp.wins >= 1) {
+          armed = true; // the bot's next move (a pass, once it is ahead) ends the match
+          return { url, logs, s: m.s };
+        }
+        await ask(m.s, 'game:action', { type: 'pass' });
+        g = await next<GameMsg>(m.s, 'game', x => x.ended !== undefined || x.view.over || isMyTurn(x) || (mode === 'timer' && x.view.players[x.view.me].passed), 3000)
+          .catch((e: unknown) => { throw new Error(`while driving the match to its last move: ${String(e)}`); });
+        if (g.ended || g.view.over) break;
+      }
+      m.s.emit('room:leave');
+      await until('rooms', () => rooms(url), 0);
+    }
+    throw new Error('never reached a position where the next move ends the match (20 attempts)');
+  }
+
+  /** The match that just ended was over before the failure, so it is logged once, as 'normal' (failRoom must not add an 'error' end). */
+  async function expectOneNormalMatchEnd(logs: LogLine[]) {
+    await sleep(100);
+    const rid = logs.filter(l => l.message === 'match_start').at(-1)?.rid;
+    const ends = logs.filter(l => l.message === 'match_end' && l.rid === rid);
+    expect(ends.map(l => l.reason)).toEqual(['normal']);
+  }
+
+  it('moved 4: a throw while sending the view after the final human pass still ends with ended "error", not a silent room delete', { timeout: 30_000 }, async () => {
+    const { url, s, logs } = await untilEndedByThrow('handler');
+    const m = await expectEndedBy(s, 'error');
+    expect(m.view.players).toHaveLength(2);
+    await until('rooms', () => rooms(url), 0);
+    await expectOneNormalMatchEnd(logs);
+  });
+
+  it('moved 4: a throw while sending the view after the bot\'s match-ending move still ends with ended "error", not a silent room delete', { timeout: 30_000 }, async () => {
+    const { url, s, logs } = await untilEndedByThrow('timer');
+    await expectEndedBy(s, 'error');
+    await until('rooms', () => rooms(url), 0);
+    await expectOneNormalMatchEnd(logs);
+  });
+});
+
+/** One stdout line as a JSON object, or null if it is not JSON (a log line is JSON; anything else, e.g. a banner, is skipped). Other errors surface. */
+function jsonLine(l: string): Record<string, unknown> | null {
+  try {
+    const j: unknown = JSON.parse(l);
+    return isObj(j) ? j : null;
+  } catch (e) {
+    if (e instanceof SyntaxError) return null; // not JSON: expected for non-log output
+    throw e;
+  }
+}
+
+/** Boot `server/index.ts` for real (PORT=0) with exactly this environment; resolves with its server_start line. Kills only its own child. */
+async function bootIndex(env: Record<string, string>): Promise<Record<string, unknown>> {
+  const root = fileURLToPath(new URL('..', import.meta.url));
+  const clean = { ...process.env };
+  for (const k of ['RAILWAY_ENVIRONMENT_NAME', 'RAILWAY_GIT_COMMIT_SHA', 'BUILD_SHA', 'TRUST_PROXY', 'LIMIT_PER_IP']) delete clean[k];
+  const child = spawn(process.execPath, ['--import', 'tsx', 'server/index.ts'], { cwd: root, env: { ...clean, PORT: '0', ...env }, stdio: ['ignore', 'pipe', 'pipe'] });
+  try {
+    return await new Promise<Record<string, unknown>>((resolve, reject) => {
+      let buf = '';
+      const t = setTimeout(() => reject(new Error('no server_start line within 20 s')), 20_000);
+      child.stdout?.on('data', (d: Buffer) => {
+        buf += d.toString();
+        const parts = buf.split('\n');
+        buf = parts.pop() ?? ''; // the last piece may be a partial line
+        for (const l of parts) { const j = jsonLine(l); if (j?.message === 'server_start') { clearTimeout(t); resolve(j); } }
+      });
+      child.once('exit', code => { clearTimeout(t); reject(new Error(`index.ts exited with ${code} before server_start`)); });
+    });
+  } finally {
+    if (child.exitCode === null) child.kill('SIGKILL');
+  }
+}
+
+describe('2b (review) server_start reports what the environment configured', () => {
+  it('server_start carries sha, trust and perIp, and they follow the environment', { timeout: 60_000 }, async () => {
+    const plain = await bootIndex({});
+    expect(plain).toMatchObject({ level: 'info', message: 'server_start', sha: 'dev', trust: 'none' });
+    expect(plain.perIp).toBeDefined();
+    const tuned = await bootIndex({ RAILWAY_GIT_COMMIT_SHA: 'abc1234', TRUST_PROXY: 'x-real-ip', LIMIT_PER_IP: 'off' });
+    expect(tuned).toMatchObject({ sha: 'abc1234', trust: 'x-real-ip' });
+    expect(tuned.perIp).toBeDefined();
+    expect(tuned.perIp).not.toEqual(plain.perIp);
+  });
+});
+
+describe('2b (moved) server/index.ts installs the process handlers once at boot', () => {
+  it('moved 5: a real boot logs server_start, and an unhandled rejection and an uncaught exception each write exactly one process:* error line, and the exception exits 1', { timeout: 40_000 }, async () => {
+    const root = fileURLToPath(new URL('..', import.meta.url));
+    // preload (a data: URL, no file)
+    // on an IPC message: first an unhandled rejection (logged, no exit: a second install would log it twice), then, 300 ms later, the throw
+    const preload = 'data:text/javascript,process.on("message",()=>{Promise.reject(new Error("preload-reject"));setTimeout(()=>{throw new Error("preload-boom")},300)})';
+    const child = spawn(process.execPath, ['--import', 'tsx', '--import', preload, 'server/index.ts'], {
+      cwd: root, env: { ...process.env, PORT: '0' }, stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+    });
+    const lines: Record<string, unknown>[] = [];
+    let buf = '';
+    let stderr = '';
+    child.stdout?.on('data', (d: Buffer) => {
+      buf += d.toString();
+      const parts = buf.split('\n');
+      buf = parts.pop() ?? '';
+      for (const p of parts) { const j = jsonLine(p); if (j) lines.push(j); }
+    });
+    child.stderr?.on('data', (d: Buffer) => { stderr += d.toString(); });
+    const exited = new Promise<number | null>(resolve => child.once('exit', code => resolve(code)));
+    try {
+      await until('server_start', () => lines.some(l => l.message === 'server_start'), true, 20_000)
+        .catch((e: unknown) => { throw new Error(`${String(e)}\nstderr: ${stderr.slice(0, 500)}`); });
+      expect(lines.filter(l => l.message === 'server_start')).toHaveLength(1);
+      child.send('boom');
+      const code = await Promise.race([exited, sleep(15_000).then(() => 'timeout' as const)]);
+      expect(code).toBe(1);
+      const errs = lines.filter(l => l.message === 'error' && l.where === 'process:uncaughtException');
+      expect(errs).toHaveLength(1);
+      expect(String(errs[0].err)).toContain('preload-boom');
+      const rejections = lines.filter(l => l.message === 'error' && l.where === 'process:unhandledRejection');
+      expect(rejections, 'one handler, so one line').toHaveLength(1);
+      expect(String(rejections[0].err)).toContain('preload-reject');
+    } finally {
+      if (child.exitCode === null) child.kill('SIGKILL');
+    }
   });
 });

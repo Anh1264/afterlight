@@ -11,5 +11,5 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": ["node"]
   },
-  "include": ["shared", "server", "client/src", "e2e", "vitest.config.ts", "playwright.config.ts"]
+  "include": ["shared", "server", "client/src", "e2e", "scripts", "vitest.config.ts", "playwright.config.ts"]
 }
