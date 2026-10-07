@@ -6,7 +6,7 @@ disable-model-invocation: true
 ---
 Scope: $ARGUMENTS (if empty: the default flows listed in ux-reviewer).
 
-1. Run ux-reviewer on the scope.
+1. Run ux-reviewer on the scope (full pass: at most 40 screenshots).
 2. De-duplicate against docs/backlog.md. Each new Blocker or Major becomes a backlog item: area, size, one-line player impact, screenshot path.
 3. Show Aiden the top 5 issues with their screenshots (take Minors from REPORT.md if there are fewer than 5 Blockers and Majors). Open the screenshots or REPORT.md in the browser pane, or publish an artifact that lays the screenshots side by side.
 4. Ask which ones to send to /bug or /ship. Don't start fixing until Aiden picks.

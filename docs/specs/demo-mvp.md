@@ -1,7 +1,8 @@
 # DEMO-MVP - Public desktop demo vs the bot
 
 Size: L (epic, delivered as 5 PRs)    Owner: product-strategist    Status: approved (Gate 1, Aiden, Tue 2026-10-06)
-Written Tue 2026-10-06 against commit e44a92e. Reworked the same day into 5 PRs after red-team's challenge (see "Challenge"). The link goes public on Tue 2026-10-13.
+Written Tue 2026-10-06 against commit e44a92e. Reworked the same day into 5 PRs after red-team's challenge (see "Challenge").
+**Update Oct 7:** the Oct 13 date is dropped; the demo is Milestone 2 in docs/backlog.md and goes public when its exit criteria hold. Dates below (the freeze, the launch week, the metric window) are kept as written and now count from the day the link goes public.
 
 ## Player problem
 A stranger clicks Aiden's link on a computer and wants to try a new card game for ten minutes. Today several things can stop them:
@@ -11,7 +12,7 @@ A stranger clicks Aiden's link on a computer and wants to try a new card game fo
 - The bot gives away Round 1 to a player who passes at once.
 - A phone gets the board at about a quarter of its size.
 
-**Goal:** by Tue Oct 13, a desktop visitor can open a public link, learn the rules, finish a full match against the bot and want another one. Nothing a visitor sends can crash the server. Phone visitors get a clear "open this on a computer" screen instead of a broken board. Everything else waits.
+**Goal:** a desktop visitor can open a public link, learn the rules, finish a full match against the bot and want another one. Nothing a visitor sends can crash the server. Phone visitors get a clear "open this on a computer" screen instead of a broken board. Everything else waits.
 
 ## Decisions
 1. **Vs bot is the only advertised mode.**

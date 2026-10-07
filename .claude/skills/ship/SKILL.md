@@ -8,8 +8,9 @@ You are the orchestrator for this item: $ARGUMENTS
 
 Route work to the agents, run the gates yourself, and spend Aiden's attention only at the two human gates. After each step, give Aiden one status line: step, owner, result, next.
 
-## 0. Size it
-Read docs/backlog.md and the relevant code. Size the item (CLAUDE.md "Sizing") and tell Aiden why in one line.
+## 0. Session and size
+This must be a fresh worktree session with no other item in it (CLAUDE.md "Team"). If it isn't, stop and ask Aiden to start one.
+Read docs/backlog.md and the relevant code. Size the item (CLAUDE.md "Sizing") and tell Aiden why in one line. State the size in every later agent prompt.
 - S -> stop and run the /bug pipeline instead.
 - L -> run steps 1-3 for the epic, propose the split into M items, wait for Aiden, then /ship each M.
 
@@ -29,7 +30,7 @@ You decide what's unresolved. A hard-to-reverse decision gets an ADR in docs/dec
 Show Aiden: the player problem, the acceptance criteria, the design in 5 lines, the red-team's top 3 objections and how each was handled, and the size. If visuals help (a flow, a mockup, the screen today), publish them as an artifact. Wait for an explicit "go".
 
 ## 4. Branch
-`feat/<id>-<slug>` (CLAUDE.md "Git"). If another item is already in flight in this checkout, stop and ask Aiden to start this one in a new worktree session (CLAUDE.md "Git"). Tell every later agent which directory to work in.
+`feat/<id>-<slug>` (CLAUDE.md "Git"). Tell every later agent which directory to work in.
 
 ## 5. Tests first - qa-engineer
 Give it the spec path ONLY (not the design rationale).
@@ -40,13 +41,15 @@ Give each the spec path, the test files, its slice of the work split and the wor
 Gate: `npm run check` green and the new tests pass. Failures follow the CLAUDE.md escalation rule; a disputed test goes to qa-engineer.
 
 ## 7. Verify - you, deterministically
-Run `npm run check` and `npm run e2e`. Client changes: ux-reviewer on the affected flow. Any Blocker or Major goes back to step 6.
+Run `npm run check` and `npm run e2e` (one Playwright run per checkout). Don't re-read files an agent already summarized.
 
-## 8. Review - code-reviewer
-Give it the spec path and the branch. CHANGES -> send the blocking list back to the dev (step 6), then re-review. At most 2 review cycles; then escalate to Aiden.
+## 8. Review and UX check, in parallel (one message, two agents)
+- code-reviewer: the size, the spec path, the branch and the working directory.
+- ux-reviewer, for client changes: the affected flow, the size (M: at most 20 screenshots), arriving by direct URL and reload as well as by click.
+Any CHANGES, Blocker or Major goes back to the dev (step 6) as one combined list. Then a delta review: cycle 2 covers only what changed. At most 2 cycles; then escalate to Aiden.
 
 ## 9. PR
-Commit with a conventional message (the hook reruns the gate), push the branch, `gh pr create`. The PR body holds: spec link, the criterion -> test table, `npm run check` output, screenshots for UI, risks, and any step you skipped and why. Update the item's status in docs/backlog.md.
+Commit with a conventional message (the hook reruns the gate), push the branch, `gh pr create`. The PR body holds: the size, spec link, the criterion -> test table, `npm run check` output, screenshots for UI, risks, the reviewer's "Enforce mechanically" line, and any step you skipped and why. Update the item's status in docs/backlog.md and file each enforcement item there.
 
 ## HUMAN GATE 2
-Aiden reviews and merges the PR (merge = deploy). Never merge yourself.
+Aiden reviews and merges the PR (merge = deploy). Never merge yourself. The session ends here.
