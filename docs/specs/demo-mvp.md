@@ -397,6 +397,18 @@ Architect, Tue 2026-10-06. Designed against PR 1 as built (worktree `t1-test-gat
   - **The phone screen** uses `align-content: safe center`, checked at 667x375.
   - **og origin:** a trailing slash is trimmed and an empty value is treated as unset. A Railway build that resolves no origin prints a loud build warning; it does not fail, so a deploy is never blocked by a missing preview URL. Check after deploy as already planned.
   - **Merge order:** PR 5 merges after 2b, because its refusal e2e needs 2b, and CI must be green.
+- **PR 5, after the ux pass** (no Blockers). Pulled into PR 5, because each is small and part of its recovery story:
+  - **A restart after the match is over keeps the end screen** and quietly clears the seat; no RESTARTED message.
+  - **A "Connection lost. Reconnecting..." overlay** while the socket is down mid-match, blocking input. It lives in App, outside Game.
+  - **Recovery messages become a neutral notice**, not the red `.error` line, at 12 CSS px or more at 1280x600.
+  - **Play vs Bot reads "Connecting..."** and stays disabled while a create or retry is pending.
+  - **The ServerEnded screen gets a "Match ended" heading**, and browser Back clears it.
+  - **The phone screen:**
+    - safe centring (it was clipped at 667x375);
+    - one wordmark in the brand style, with the image cropped to the card fan;
+    - the clipboard hint "Copying is blocked here. Press and hold the link to copy it."
+  - **og.jpg A is recaptured** with a tighter crop. The ux pass judged A clearly better than B as a link preview, at both 500x262 and 150x79.
+  - **Deferred to the backlog:** C17 (tablet layout of the phone screen), C18 (fullscreen discoverability), C19 (remember ended codes) and C20 (portrait rotate hint).
 
 ### Approach
 - **PR 2** ships as 2a (crash-proofing, seats, DM-2, DM-8) and then 2b (abuse limits, funnel log, `/health` counters).
