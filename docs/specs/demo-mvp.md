@@ -389,6 +389,7 @@ Architect, Tue 2026-10-06. Designed against PR 1 as built (worktree `t1-test-gat
     - `lostMatch(seenBootAt, nowBootAt)`, which is restarted iff both are known and `nowBootAt - seenBootAt > 5000` ms;
     - App fetches `/health` on every connect and stamps the boot time into `lastSeen`.
     - `uptimeS` is floored on the server (2a), so it never exceeds the real uptime.
+    - The 5 s tolerance absorbs the floor (≤1 s) plus round-trip time. Two estimates of the same server differ by at most about 1 s plus latency. Accepted consequence: a server that dies within 5 s of its own boot reads as ENDED, not RESTARTED. The e2e restart therefore lets the old server live at least 6 s.
   - **Recovery dead-ends fixed:**
     - a socket refused at load still retries;
     - an OFFLINE click on a socket that isn’t active reconnects it;
