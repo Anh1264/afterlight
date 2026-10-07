@@ -72,6 +72,7 @@ Spec and design: docs/specs/demo-mvp.md. Feature PRs don't edit this file; the o
 | N5 | server | S | Rematch dead code: `sendGame(room, [])` runs right after `room.game = null`, so it returns immediately. | todo |
 | N6 | server | S | CORS is `origin: true` (server/index.ts:63): restrict it to our own domain. Low risk (no cookie auth). | todo |
 | N7 | design | S | A turn timeout passes the whole round, not just the turn. Decide this on purpose (game-designer), especially while the clock's start time is a guess (N3). | todo |
+| N8 | server | M | Split `server/app.ts` (524 lines after PR 2a) into rooms, handlers and timers once the demo is over; plan it with the architect. Found in the PR 2a review. | todo |
 | C5 | client | S | Art files aren't content-hashed and are served with `maxAge: '1h'`, so a replaced portrait stays stale for up to an hour. Cache-bust art (for example a hash in the manifest). Pairs with C2's immutable /assets. | todo |
 | C6 | client | S | Client hygiene: remove `ds.shown!` non-null assertions, replace the native `confirm()` forfeit dialog, clean up per-room `al:t:<code>` token keys that pile up in localStorage. | todo |
 | C7 | client | M | Accessibility: keyboard play, focus states, ARIA labels, and houses told apart by more than colour. | todo |

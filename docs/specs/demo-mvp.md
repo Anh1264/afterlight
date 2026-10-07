@@ -356,6 +356,23 @@ Architect, Tue 2026-10-06. Designed against PR 1 as built (worktree `t1-test-gat
 - **PR 3's text fix widened to every Echo-starter card whose text says something the engine doesn't do.** game-designer found three more: Replicator and Afterimage (Echo starter) say "copy", but the engine makes a plain Echo token that copies only power, without Grow, Guard or Shield (engine.ts:397, :540-544); Wire Hound (not a starter) has Lattice's bug, "Echo tokens" where the engine boosts every token (engine.ts:420). Each gets a text test like Drake-07's. The Echo keyword tooltip also matches `token`, so "Your tokens gain 2" still explains what a token is. Null-9 and Puppeteer only leave out edge cases (a seized unit loses Poison; it moves rows when its row is full), so they go to the backlog (E6).
 - **Deferred to the backlog:** the First Light chip's legibility at 1366 (C10), the first-visit modal's keyword column (C11), hand cards clipped at 1366x650 (C12, for Friday's ux pass), and the rules literals outside PR 4's files (C9).
 
+**Orchestrator rulings after the PR 2a review and PR 5 tests (Tue Oct 6):**
+- **PR 2a, blocking fix.** `drop()` must ignore a room that `endByServer` or `deleteRoom` already removed (`if (rooms.get(r.code) !== r) return;`). Otherwise, when a PvP opponent leaves after a server-ended match, the other player gets a disconnect toast and then a forfeit VICTORY, which ADR 0001 forbids. It also stops `close()` from arming timers on dead rooms. Test: after `ended: error`, a disconnect sends nothing more within the grace period.
+- **PR 2a, also fixed now.** A malformed `/r/CODE` answers "That match link has expired or never existed." rather than "Bad request.", so a bad link reads like an old one. Tests are added for a seat that rejoins twice (the drop timer must be cleared) and for `parseDevice` accept and reject.
+- **Moved to 2b** (it edits the same file):
+  - before `release()`, check that the join can succeed, so a full or started link doesn’t forfeit the current match;
+  - wire `lobbyIdleMs`;
+  - the bot-lobby timer that `drop(true)` arms on a removed seat, and `socket.leave`;
+  - `failRoom` for a failure after the match-ending move (`if (r.game)`, and `phase !== lobby` in the wrapper);
+  - a test for the `installProcessHandlers` call.
+
+  Splitting `server/app.ts` (524 lines) waits until after the demo (N8).
+- **Merge order is binding: PR 4 before 2a.** Today’s client sends the saved deck in a bot lobby, 2a refuses it, and the client would then wipe the player’s saved deck ("Saved deck reset").
+- **PR 5 adds `e2e/server-ended.spec.ts`.** It holds c7 idle, c7 error and the refusal check, because they boot `e2e/test-server.ts`, which needs 2a’s `createGameServer`.
+  - PR 5 can’t be committed until it merges main after 2a, because `test-server.ts` doesn’t typecheck before then. The refusal check passes once 2b is in.
+  - Its c6 "restarted" case also needs 2a’s `uptimeS`.
+- **Give feedback on the crash and server-ended screens** follows PR 4’s rule: it shows only when `FEEDBACK_URL` is set.
+
 ### Approach
 - **PR 2** ships as 2a (crash-proofing, seats, DM-2, DM-8) and then 2b (abuse limits, funnel log, `/health` counters).
   - `server/index.ts` becomes a thin entry point over a `createGameServer(opts)` factory in `server/app.ts`.
@@ -746,7 +763,7 @@ Game.tsx uses it in three places:
 | 2b | `server/app.ts`, `server/limits.ts`, `server/log.ts`, `scripts/abuse.ts` n, `tsconfig.json` (+`scripts`). Tests: `server/abuse.test.ts` n, `server/limits.test.ts` n, `server/funnel.test.ts` n |
 | 3 | `shared/bot.ts`, `shared/cards.ts` (text of Drake-07, Lattice, Afterimage, Wire Hound and Replicator, plus the Echo keyword `match` at :399; nothing in `RULES`), `README.md` (those five rows). Tests: `shared/bot.test.ts` n, `shared/__snapshots__/bot.test.ts.snap` n, `shared/cards-text.test.ts` n |
 | 4 | `shared/pass.ts` n, `shared/cards.ts` (`RULES` :381-387 only), `shared/engine.ts` (`endRound` :643-656 and the new `matchWinner`), `client/src/components/Screens.tsx`, `Game.tsx`, `Card.tsx`, `client/src/styles.css`, `client/src/links.ts` n, `client/src/prefs.ts` n, `e2e/helpers.ts`. Tests: `shared/pass.test.ts` n, `e2e/demo-surface.spec.ts` n |
-| 5 | `client/index.html`, `vite.config.ts`, `playwright.config.ts` (one env line), `client/src/main.tsx`, `App.tsx`, `net.ts`, `client/src/device.ts` n, `client/src/recovery.ts` n, `components/PhoneGate.tsx` n, `ServerEnded.tsx` n, `ErrorBoundary.tsx` n, `FullscreenButton.tsx` n, `components/shell.css` n, `client/public/og.jpg` n. Tests: `client/src/device.test.ts` n, `client/src/recovery.test.ts` n, `e2e/test-server.ts` n, `e2e/server-proc.ts` n, `e2e/phone.spec.ts` n, `e2e/preview.spec.ts` n, `e2e/recovery.spec.ts` n |
+| 5 | `client/index.html`, `vite.config.ts`, `playwright.config.ts` (one env line), `client/src/main.tsx`, `App.tsx`, `net.ts`, `client/src/device.ts` n, `client/src/recovery.ts` n, `components/PhoneGate.tsx` n, `ServerEnded.tsx` n, `ErrorBoundary.tsx` n, `FullscreenButton.tsx` n, `components/shell.css` n, `client/public/og.jpg` n. Tests: `client/src/device.test.ts` n, `client/src/recovery.test.ts` n, `e2e/test-server.ts` n, `e2e/server-proc.ts` n, `e2e/phone.spec.ts` n, `e2e/preview.spec.ts` n, `e2e/recovery.spec.ts` n, `e2e/server-ended.spec.ts` n |
 
 Overlaps:
 - **server/app.ts, limits.ts, log.ts:** 2a creates them; 2b branches from 2a in the same lane and extends them. Nobody else touches `server/`.
