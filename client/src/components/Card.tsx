@@ -48,10 +48,7 @@ export function CardFace({ cardId, scale = 1, power, dim }: { cardId: string; sc
             <img className="abs" src={artSrc(d.id)} alt={d.name} style={{ left: art.ax, top: art.ay, width: art.aw, height: art.ah }} />
           </>
         ) : (
-          <>
-            <div className="abs" style={{ left: 100, top: 130, opacity: 0.2 }}><Sigil house={d.house} size={300} stroke={2.4} /></div>
-            {has === false && <div className="abs mono" style={{ left: 0, right: 0, top: 440, textAlign: 'center', fontSize: 12, letterSpacing: '0.3em', color: H.accent, opacity: 0.7 }}>ART PENDING</div>}
-          </>
+          <div className="abs" style={{ left: 100, top: 130, opacity: 0.2 }}><Sigil house={d.house} size={300} stroke={2.4} /></div>
         )}
         <div className="abs" style={{ inset: 12, border: `1.5px solid ${H.frame}`, borderRadius: 10 }} />
         {d.kind === 'unit' ? (

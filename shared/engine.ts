@@ -641,6 +641,12 @@ function advance(g: GameState, ev: GEvent[]) {
   }
 }
 
+/** Who has won the match after a round ends, 'draw' if level, or null while the match goes on. */
+export function matchWinner(wins: readonly [number, number], round: number): PIdx | 'draw' | null {
+  if (wins[0] < RULES.WINS_NEEDED && wins[1] < RULES.WINS_NEEDED && round < RULES.ROUNDS) return null;
+  return wins[0] > wins[1] ? 0 : wins[1] > wins[0] ? 1 : 'draw';
+}
+
 function endRound(g: GameState, ev: GEvent[]) {
   const scores = totals(g);
   const winner: PIdx | 'tie' = scores[0] > scores[1] ? 0 : scores[1] > scores[0] ? 1 : 'tie';
@@ -648,9 +654,10 @@ function endRound(g: GameState, ev: GEvent[]) {
   g.results.push({ round: g.round, scores, winner });
   ev.push({ t: 'roundEnd', round: g.round, scores, winner });
   const [w0, w1] = [g.players[0].wins, g.players[1].wins];
-  if (w0 >= 2 || w1 >= 2 || g.round >= 3) {
+  const mw = matchWinner([w0, w1], g.round);
+  if (mw !== null) {
     g.over = true;
-    g.winner = w0 > w1 ? 0 : w1 > w0 ? 1 : 'draw';
+    g.winner = mw;
     ev.push({ t: 'matchEnd', winner: g.winner });
     return;
   }

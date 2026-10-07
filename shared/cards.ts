@@ -384,6 +384,8 @@ export const RULES = {
   HAND_MAX: 10,
   ROW_MAX: 6,
   FIRST_LIGHT: 2,
+  ROUNDS: 3,
+  WINS_NEEDED: 2,
 } as const;
 
 /** Plain-English keyword definitions, shown in-game and on the All Cards page. */
