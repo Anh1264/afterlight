@@ -1,10 +1,12 @@
 import { expect, test } from '@playwright/test';
+import { rmSync } from 'node:fs';
 import { playMatchToEnd, startBotMatch } from './helpers';
 
 const shot = (name: string) => `e2e/out/smoke/${name}.png`;
 
 test('a stranger can play a full match against the bot', async ({ page }) => {
   test.setTimeout(170_000);
+  rmSync('e2e/out/smoke', { recursive: true, force: true }); // no stale screenshots from a previous run
   await startBotMatch(page, 0, {
     onHome: async () => { await page.screenshot({ path: shot('home'), fullPage: true }); },
     onLobby: async () => { await page.screenshot({ path: shot('lobby'), fullPage: true }); },

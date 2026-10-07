@@ -50,9 +50,8 @@ export function checkInvariants(g: GameState) {
   for (const p of g.players) for (const u of p.units) if (u.power <= 0) throw new Error('dead unit on board ' + u.name);
   for (const p of g.players) if (p.hand.length > 10) throw new Error('hand over max');
   const ids = new Set<string>();
-  for (const p of g.players) for (const c of [...p.deck, ...p.hand, ...p.discard]) { if (ids.has(c.uid)) throw new Error('dup card ' + c.uid + ' ' + CARDS[c.cardId].name); ids.add(c.uid); }
+  for (const p of g.players) for (const c of [...p.deck, ...p.hand, ...p.discard, ...p.units]) { if (ids.has(c.uid)) throw new Error('dup card ' + c.uid + ' ' + (c.cardId ? CARDS[c.cardId].name : 'token')); ids.add(c.uid); }
 }
-
 
 /** The CLI's fuzz batch: 300 random-play matches + 400 random-deck matches. Throws on any violation. Returns the match count. */
 export function runFuzz(): number {

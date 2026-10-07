@@ -16,6 +16,17 @@ export async function matchIsOver(page: Page): Promise<boolean> {
 
 /** Open home, Play vs Bot, pick a house (default: the first), press Start match. Waits for the board. */
 export async function startBotMatch(page: Page, house = 0, hooks: { onHome?: () => Promise<void>; onLobby?: () => Promise<void> } = {}) {
+  // The match log keeps only the last lines, so count server-confirmed plays with an observer:
+  // the client renders a "You played <card>" log line only after the server accepted the play.
+  await page.addInitScript(() => {
+    const w = window as unknown as { __plays: number };
+    w.__plays = 0;
+    new MutationObserver(muts => {
+      for (const m of muts) for (const n of m.addedNodes) {
+        if (n instanceof HTMLElement && n.matches('.log-line') && (n.textContent ?? '').startsWith('You played')) w.__plays++;
+      }
+    }).observe(document, { childList: true, subtree: true });
+  });
   await page.goto('/');
   // Later PRs: dismiss the first-visit How to play modal here.
   await expect(page.getByRole('button', { name: 'Play vs Bot' })).toBeEnabled();
@@ -29,7 +40,13 @@ export async function startBotMatch(page: Page, house = 0, hooks: { onHome?: () 
   await expect(page.locator('.game')).toBeVisible({ timeout: 15_000 });
 }
 
-/** Try to play the card at hand index i, completing any placement/target/mode step. Returns true if the server accepted a play. */
+const acceptedPlays = (page: Page) => page.evaluate(() => (window as unknown as { __plays: number }).__plays);
+
+/**
+ * Try to play the card at hand index i, completing any placement/target/mode step.
+ * Returns true if the client SENT a play (Pass disabled or match over). That is not server acceptance;
+ * the caller confirms it via the "You played" log line. Returns false if the card could not be played.
+ */
 async function tryPlayCard(page: Page, i: number): Promise<boolean> {
   await page.locator('.hand-card').nth(i).click();
   const cancel = page.locator('.prompt .btn.ghost');
@@ -87,6 +104,7 @@ async function pass(page: Page) {
  */
 export async function playMatchToEnd(page: Page, hooks: { onFirstPlay?: () => Promise<void> } = {}): Promise<string> {
   let playedRound = '';
+  let accepted = 0;
   let announcedFirst = false;
   const waitForTurnOrEnd = () =>
     expect.poll(async () => (await matchIsOver(page)) || (await isMyTurn(page)), { timeout: 60_000, intervals: [200, 300, 500] }).toBe(true);
@@ -97,7 +115,12 @@ export async function playMatchToEnd(page: Page, hooks: { onFirstPlay?: () => Pr
     let played = false;
     if (playedRound !== round) {
       played = await playAnyCard(page);
-      if (played) playedRound = round;
+      if (played) {
+        playedRound = round;
+        // Server-confirmed: a rejected play never produces the "You played" log line.
+        await expect.poll(() => acceptedPlays(page), { timeout: 15_000, message: 'server never confirmed the play ("You played" log line)' }).toBeGreaterThan(accepted);
+        accepted = await acceptedPlays(page);
+      }
     }
     if (played) {
       if (!announcedFirst) {
@@ -110,5 +133,9 @@ export async function playMatchToEnd(page: Page, hooks: { onFirstPlay?: () => Pr
     }
   }
   await expect(endTitle(page)).toHaveText(/VICTORY|DEFEAT|DRAW/);
+  if (accepted === 0) throw new Error('Match ended but no card play was ever accepted by the server');
+  // Ended by playing the rounds out, not by forfeit or a server-ended game.
+  await expect(page.getByText('Match ended by forfeit')).toHaveCount(0);
+  expect(await page.locator('.end-round').count(), 'end screen should list at least 2 played rounds').toBeGreaterThanOrEqual(2);
   return (await endTitle(page).textContent()) ?? '';
 }
