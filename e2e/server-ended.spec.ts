@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type Page } from '@playwright/test';
+import { expect, test, type Browser, type Locator, type Page } from '@playwright/test';
 import { FEEDBACK_URL } from '../client/src/links';
 import { SEEN_RULES_KEY, isMyTurn, pass, startBotMatch } from './helpers';
 import { spawnPort, spawnServer } from './server-proc';
@@ -20,6 +20,20 @@ async function pageOn(browser: Browser, url: string) {
 }
 
 const tokenKeys = (page: Page) => page.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('al:t:')));
+
+/**
+ * FAIL_BOT_TURN makes the server's bot timer throw, and that timer only exists once the bot has to act. Who moves first is
+ * random: if the bot does, the server ends the match by itself; if I do, my pass hands the bot the turn. So pass whenever
+ * it is my turn until `message` shows. Both reads are non-waiting (isVisible, a count), so the board vanishing mid-poll
+ * (the match ended) cannot park the loop on a missing element, and nothing can end the match while it is my turn.
+ */
+async function passUntilVisible(page: Page, message: Locator) {
+  await expect.poll(async () => {
+    if (await message.isVisible()) return true;
+    if (await isMyTurn(page)) await pass(page);
+    return message.isVisible();
+  }, { timeout: 30_000, intervals: [300, 500] }).toBe(true);
+}
 
 async function expectNoResultScreen(page: Page) {
   await expect(page.locator('.end-title')).toHaveCount(0);
@@ -61,13 +75,7 @@ test('c7 FAIL_BOT_TURN=1 ends the match with the error message, never a board or
   const { context, page } = await pageOn(browser, srv.url);
   try {
     await startBotMatch(page);
-    const message = page.getByText(ERROR);
-    // The bot timer only fires once the bot has to act: pass whenever it is my turn until the server ends the match.
-    await expect.poll(async () => {
-      if (await message.isVisible()) return true;
-      if (await isMyTurn(page).catch(() => false)) await pass(page);
-      return message.isVisible();
-    }, { timeout: 30_000, intervals: [300, 500] }).toBe(true);
+    await passUntilVisible(page, page.getByText(ERROR));
     await expectNoResultScreen(page);
     await expect(page.getByText(IDLE)).toHaveCount(0);
     await expectWayHome(page);
@@ -120,11 +128,8 @@ test('ux4 the ServerEnded screen has a "Match ended" heading above the sentence 
     try {
       await startBotMatch(page);
       const text = page.getByText(sentence);
-      await expect.poll(async () => {
-        if (await text.isVisible()) return true;
-        if (offset === 8 && await isMyTurn(page).catch(() => false)) await pass(page);
-        return text.isVisible();
-      }, { timeout: 30_000, intervals: [300, 500] }).toBe(true);
+      if (offset === 8) await passUntilVisible(page, text);
+      else await expect(text).toBeVisible({ timeout: 15_000 });
       const heading = page.getByRole('heading', { name: 'Match ended', exact: true });
       await expect(heading).toBeVisible();
       const hb = await heading.boundingBox();

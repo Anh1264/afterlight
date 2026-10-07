@@ -8,9 +8,13 @@ export { SEEN_RULES_KEY } from '../client/src/prefs';
 const passBtn = (page: Page) => page.locator('.btn.pass');
 const endTitle = (page: Page) => page.locator('.end-title');
 
-/** True when it is the player's turn: the Pass button is only enabled then (Game.tsx `myTurn`). */
+/**
+ * True when it is the player's turn: the Pass button is only enabled then (Game.tsx `myTurn`).
+ * Counts instead of calling locator.isEnabled(), which waits for the button to exist and so hangs, with no
+ * timeout, once the board is gone (the server ended the match). A missing board is simply "not my turn".
+ */
 export async function isMyTurn(page: Page): Promise<boolean> {
-  return passBtn(page).isEnabled();
+  return (await page.locator('.btn.pass:enabled').count()) > 0;
 }
 
 export async function matchIsOver(page: Page): Promise<boolean> {
