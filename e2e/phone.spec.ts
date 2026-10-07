@@ -13,6 +13,21 @@ const MADE_FOR_DESKTOP = 'Made for desktop: open this link on a computer';
 const CLIPBOARD_HINT = 'Copying is blocked here. Press and hold the link to copy it.';
 const ART_REQUEST = /\/art\/(?!manifest\.json)/;
 
+/**
+ * Geometry is only meaningful once the page has settled on its real web font. The heading is condensed
+ * Archivo (Google Fonts, display=swap); before it arrives the fallback (DejaVu Sans Bold on Linux CI) is
+ * about 35% wider and overflows narrow phones, which is not what a player sees. So: wait for fonts, then
+ * insist Archivo really loaded. (document.fonts.check alone is vacuously true when the stylesheet never
+ * arrived, so look for a loaded FontFace instead.)
+ */
+const settleOnWebFont = async (page: Page) => {
+  const loaded = await page.evaluate(async () => {
+    await document.fonts.ready;
+    return [...document.fonts].some(f => f.family.replace(/["']/g, '') === 'Archivo' && f.status === 'loaded');
+  });
+  expect(loaded, 'Archivo web font did not load, so geometry would measure a fallback font').toBe(true);
+};
+
 /** Make a Mac UA look like iPadOS / "Request Desktop Website": the Mac UA plus 5 touch points. */
 const macWithTouch = async (page: Page) => {
   await page.addInitScript(() => Object.defineProperty(Navigator.prototype, 'maxTouchPoints', { get: () => 5, configurable: true }));
@@ -83,6 +98,7 @@ test.describe('c1 iPhone SE landscape 667x375', () => {
   test('the AFTERLIGHT heading is not clipped above the page and Copy link can be scrolled into view', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByText(MADE_FOR_DESKTOP)).toBeVisible();
+    await settleOnWebFont(page);
     await page.evaluate(() => window.scrollTo(0, 0));
     const heading = page.getByText('AFTERLIGHT').first();
     const hb = await heading.boundingBox();
@@ -112,6 +128,7 @@ test.describe('c1 narrow phones: nothing is pushed past the viewport edges', () 
       test(`the AFTERLIGHT heading, Copy link and Try anyway fit inside 0..${w} horizontally`, async ({ page }) => {
         await page.goto('/');
         await expect(page.getByText(MADE_FOR_DESKTOP)).toBeVisible();
+        await settleOnWebFont(page);
         const targets = {
           heading: page.getByText('AFTERLIGHT').first(),
           copy: page.getByRole('button', { name: 'Copy link' }),
