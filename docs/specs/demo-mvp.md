@@ -418,6 +418,12 @@ Architect, Tue 2026-10-06. Designed against PR 1 as built (worktree `t1-test-gat
   - the `io.use` caps with the `connect_error` text.
 - **Review cycles.** PR 2b's cycle 2 returned CHANGES for one line, and the reviewer had already checked its own fix. That fix went test first and then through a delta check (APPROVE), not a third cycle. The rule stays: a contested or larger cycle-2 finding goes to Aiden.
 - **PR 6: a silenced unit's inspect panel lists only its statuses**, Silenced first, with no keyword paragraphs. Silence clears the keyword flags (engine.ts:390, :496) and Last Words (:170), so listing those keywords contradicted the engine. It also overflowed the panel by 71 stage px. The tightest reachable case is now Odric with Guard, Shield, Poison and Grow, with 23.6 stage px of headroom at 1366x650.
+- **PR 6, after the ux re-check and code review on Oct 6:**
+  - **Help.tsx joins PR 6's files.** The silenced display lives in `KeywordHelp`, so the scope is the inspect panel in Game.tsx, Card.tsx (`CardTextBody`, `PowerBadge`), Help.tsx and styles.css.
+  - **The Silenced text says exactly what the engine does:** "It lost Guard, Grow, Shield and Poison, and its Last Words won’t trigger. Anything it gains after the Silence still works." It is checked against engine.ts:390 and :496 (flags cleared), :170 (Last Words skipped) and :203-206 (Shield, Poison and Grow can be gained again).
+  - **Names stay centred in the /cards gallery and the deck builder.** The name row with the power badge renders only in the inspect panel. A long name overflows both sides of its box evenly, not only to the right. The tests measure every card, not a sample.
+  - **The inspect power badge shows current power and keeps the board's boosted and damaged colours**, which the art thumbnail used to carry.
+  - **1280x600 stays out of C12's criterion.** Inspect text is 11.3 px there, and the fix needs more panel room. That is backlog C24.
 - **PR 5:**
   - **ux6 wins over the c8 double-click test.** The busy button stays disabled ("Connecting...") through the retry. c8 now force-clicks it and still checks for one lobby and one history entry.
   - **Screens.tsx joins PR 5's files** for the Home notice and the busy label. PR 5 merges main after PR 4 and resolves any overlap there.

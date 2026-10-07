@@ -8,30 +8,30 @@ Spec and design: docs/specs/demo-mvp.md. Feature PRs don't edit this file; the o
 
 | PR | Items | Status |
 | --- | --- | --- |
-| 1 Test gates | T1, T4, T2 | done ([#1](https://github.com/Anh1264/afterlight/pull/1), merged Oct 7); Railway's Wait for CI is Aiden's switch |
+| 1 Test gates | T1, T4, T2 | done ([#1](https://github.com/Anh1264/afterlight/pull/1), merged Oct 7); Railway's settings confirmed by Aiden |
 | 2a Server hardening | P0-1, N4, DM-2, DM-8 | done ([#4](https://github.com/Anh1264/afterlight/pull/4), merged Oct 7) |
-| 2b Abuse limits and logs | P0-4, DM-6 | PR open ([#5](https://github.com/Anh1264/afterlight/pull/5)); code review APPROVE after 2 cycles and a delta check |
-| 3 Bot Round 1 and card text | DM-1, DM-3 | approved; PR waits on Aiden's OK to trim a stale test snapshot |
+| 2b Abuse limits and logs | P0-4, DM-6 | done ([#5](https://github.com/Anh1264/afterlight/pull/5), merged Oct 7) |
+| 3 Bot Round 1 and card text | DM-1, DM-3 | done ([#9](https://github.com/Anh1264/afterlight/pull/9), merged Oct 7) |
 | 4 Truth on screen and the demo surface | P0-3, DM-4 | done ([#3](https://github.com/Anh1264/afterlight/pull/3), merged Oct 7) |
-| 5 Phones, link preview and recovery | DM-5, DM-7, C4 | review (code review APPROVE after cycle 2 + delta check; PR open) |
-| 6 Readable cards in a match | C12 | build done; review cycle 2 and ux re-check next |
+| 5 Phones, link preview and recovery | DM-5, DM-7, C4 | done ([#10](https://github.com/Anh1264/afterlight/pull/10), merged Oct 7) |
+| 6 Readable cards in a match | C12 | review (code review APPROVE after 2 cycles and a delta check; ux SHIP; PR open) |
 
 | ID | Area | Size | Item | Status |
 | --- | --- | --- | --- | --- |
-| DM-1 | bot | S | The bot wins Round 1 against an immediate pass in at least 98% of 2,000 seeds (85% when the human plays their strongest card first) (it concedes 55.8% today), and judges who is ahead with the engine's totals, First Light included (bot.ts uses raw `score()`). | approved (PR 3) |
+| DM-1 | bot | S | The bot wins Round 1 against an immediate pass in at least 98% of 2,000 seeds (85% when the human plays their strongest card first) (it concedes 55.8% today), and judges who is ahead with the engine's totals, First Light included (bot.ts uses raw `score()`). | done (#9) |
 | DM-2 | server | S | No turn clock in bot matches: today a 60 s timeout passes the whole round while a newcomer reads their hand. Idle bot matches end after 15 minutes instead. | done (#4) |
-| DM-3 | engine | S | Card text matches the engine for Drake-07 and Lattice (Legends in the Echo starter), plus Replicator, Afterimage and Wire Hound, found during the build. Text only, plus their README rows and the Echo keyword tooltip match. | approved (PR 3) |
+| DM-3 | engine | S | Card text matches the engine for Drake-07 and Lattice (Legends in the Echo starter), plus Replicator, Afterimage and Wire Hound, found during the build. Text only, plus their README rows and the Echo keyword tooltip match. | done (#9) |
 | DM-4 | client | M | Demo surface: Play vs Bot is the only home action (PvP at `/?pvp=1`), deck builder hidden, no ART PENDING, PLAYTEST label, How to play on the first click, Give feedback link, rules numbers from shared constants. | done (#3) |
-| DM-5 | client | S | Phones and tablets get a "made for desktop" screen (Copy link, Try anyway, no art preload). Link-preview tags (og/twitter), a fullscreen button, and the device class sent in the socket handshake. | review (PR 5) |
-| DM-6 | server | S | One single-line JSON log per funnel event (no tokens, IPs or names). Build SHA and since-boot counters on `/health`. | review (#5) |
-| DM-7 | client | M | Recovery: "the server restarted and your match was lost" instead of the invite/expired screen, "Can't reach the server. Retrying...", and a message for matches the server ended (error or idle). | review (PR 5) |
+| DM-5 | client | S | Phones and tablets get a "made for desktop" screen (Copy link, Try anyway, no art preload). Link-preview tags (og/twitter), a fullscreen button, and the device class sent in the socket handshake. | done (#10) |
+| DM-6 | server | S | One single-line JSON log per funnel event (no tokens, IPs or names). Build SHA and since-boot counters on `/health`. | done (#5) |
+| DM-7 | client | M | Recovery: "the server restarted and your match was lost" instead of the invite/expired screen, "Can't reach the server. Retrying...", and a message for matches the server ended (error or idle). | done (#10) |
 | DM-8 | server | S | Bot rooms play starter decks only, enforced by the server: `lobby:deck` is rejected in bot rooms (today it accepts any legal custom deck). | done (#4) |
 
 ## Phase 0 - gates for the team
 | ID | Area | Size | Item | Status |
 | --- | --- | --- | --- | --- |
 | T1 | tooling | M | Install vitest and Playwright. Port engine.test.ts to vitest. Add e2e/ helpers (start server, play a bot match, open /cards). `npm run check` = typecheck + vitest + fuzz-lite; `npm run e2e` separately. | done |
-| T2 | ops | S | GitHub Actions on push/PR: check + e2e + `npm audit --omit=dev`. Railway deploys only after CI is green. | review |
+| T2 | ops | S | GitHub Actions on push/PR: check + e2e + `npm audit --omit=dev`. Railway deploys only after CI is green. | done (#1) |
 | T4 | tooling | S | Split shared/simulate.ts into a library and a CLI. Today importing `randomDeck` runs the full 700-match simulation at import time. Needed for T1's fuzz-lite. | done |
 | T5 | tooling | S | Install ESLint and enforce the CLAUDE.md conventions (no `any`, no non-null assertions, no empty `catch`). The code already has `eslint-disable` comments for a linter that isn't installed. | todo |
 
@@ -41,7 +41,7 @@ Spec and design: docs/specs/demo-mvp.md. Feature PRs don't edit this file; the o
 | P0-1 | server | S | Validate every socket payload with zod, tolerate a missing ack, try/catch every handler. Today `game:action` without an ack, or a `null` action, crashes the process (reproduced). | done (#4) |
 | P0-2 | ops | S | Push local main: it is 2 commits ahead of GitHub, so Railway still serves v0.2. (Aiden, from his terminal.) Pushed; Railway's production deploy of e44a92e succeeded on Oct 6. | done |
 | P0-3 | client | S | Client hard-codes First Light +1; the engine uses +2 (`RULES.FIRST_LIGHT`). Use shared `totals()` in Game.tsx:193-194 and fix the chip (Game.tsx:285) and rules copy (Screens.tsx:64). The pass button can promise WIN on a tie. | done (#3) |
-| P0-4 | server | S | One room per socket; release the old seat on attach; rate-limit room:create; check `seat.socketId === socket.id` on game events. One socket created 20,000 rooms in 2.5 s; rooms held by dead sockets are never swept. | review (#5) |
+| P0-4 | server | S | One room per socket; release the old seat on attach; rate-limit room:create; check `seat.socketId === socket.id` on game events. One socket created 20,000 rooms in 2.5 s; rooms held by dead sockets are never swept. | done (#5) |
 | B1 | client | S | Reported by Aiden: Back on the All Cards page leaves the site when /cards was opened directly. Cause: App.tsx `onBack` uses `history.length > 1`, which counts pages from before the app. Back should go to Home unless the previous entry is ours. | todo |
 
 ## P1 - make it launchable
@@ -60,7 +60,7 @@ Spec and design: docs/specs/demo-mvp.md. Feature PRs don't edit this file; the o
 | E3 | engine | S | Apply each action to a clone and commit on success (structuredClone of the 2.1 KB state is about 43 µs). Today an exception mid-effect leaves a half-applied GameState that the server keeps serving. Remove the catch-and-skip in `bestPlay` (bot.ts:74) so engine crashes fail tests instead of weakening the bot. | todo |
 | G2 | bot | M | Bot policy: one-move greedy with hand-tuned constants and random passes; it splits rounds in 98% of bot-vs-bot games. Exploitable by humans, and it skews the sim's balance numbers. | todo |
 | N4 | server | S | Process safety net: log `uncaughtException` and `unhandledRejection` (today any missed bug is fatal and silent). Validation (P0-1) stays the real fix. | done (#4) |
-| C4 | client | S | React error boundary with a reload action. Today any render exception shows a blank white screen and nobody hears about it. | review (PR 5) |
+| C4 | client | S | React error boundary with a reload action. Today any render exception shows a blank white screen and nobody hears about it. | done (#10) |
 
 ## P2 - after real traffic
 | ID | Area | Size | Item | Status |
@@ -91,9 +91,11 @@ Spec and design: docs/specs/demo-mvp.md. Feature PRs don't edit this file; the o
 | C19 | client | S | Revisiting your own old match link a second time says "YOU’VE BEEN INVITED" (the first visit correctly says it ended and clears the seat), and Join then says "expired". Remember ended codes and show the ended message. Related: on an end screen kept after a restart (PR 5 ux1), Rematch emits to a room that no longer exists and nothing happens; disable it or explain. Found in the PR 5 ux pass and code review. | todo |
 | C20 | client | S | After "Try anyway" on a phone in portrait, the desktop stage is tiny. Show a "Rotate your phone" hint. Found in the PR 5 ux pass. | todo |
 | C21 | client | S | The inspect panel keeps the unit object captured when the mouse entered it (Game.tsx:245), so a unit whose statuses change during an animation shows stale statuses until it is hovered again. Read the live unit by uid instead. Found in the PR 6 code review. | todo |
-| C22 | client | S | Match inspect panel polish, from the PR 6 ux re-check: (m2) the POWER badge sits under the totals in the same label-over-number pattern, so at a glance the column reads as three scores; mirror the card face (power left of the name) or use the board tiles' disc. (m4) The POWER and KEYWORDS labels and the epithet are 7-9 px at 1366x650. (m5) A vanilla card says "No ability. Raw power." and then "No keywords. This card is just its power." (m6) Every "(now)" status is red, including helpful ones (Shield, Grow). Optionally dim a silenced unit's printed keyword lines. | todo |
+| C22 | client | S | Match inspect panel polish, from the PR 6 ux re-check: (m2) the POWER badge sits under the totals in the same label-over-number pattern, so at a glance the column reads as three scores; mirror the card face (power left of the name) or use the board tiles' disc. (m4) The POWER and KEYWORDS labels and the epithet are 7-9 px at 1366x650. (m5) A vanilla card says "No ability. Raw power." and then "No keywords. This card is just its power." (m6) Every "(now)" status is red, including helpful ones (Shield, Grow). Optionally dim a silenced unit's printed keyword lines. From the PR 6 delta code review: (m7) CardFace's `power` prop and the `.card-power .n.up/.down` CSS branch are now dead code; (m8) PowerBadge's class expression renders `class=""` at base power, simplify it. From the PR 6 final ux check: (m9) inspect text is 11.3 px at inner 1280x600 (see C24 for the other small text there). | todo |
 | C23 | client | S | Recovery polish from the PR 5 code review: (1) during a long outage the "Connection lost. Reconnecting..." overlay blocks the in-match Home button, so browser Back is the only way out; offer "Back to home" after about 30 s. (2) A Play vs Bot click on a socket refused at load waits for the 4 s OFFLINE timeout before reconnecting; connect first and let the buffered create flush, without a double create through the `pendingStart` retry. (3) The RECONNECTING screen shown for a refusal at load on /r/CODE has no way home while the server keeps refusing; same "Back to home" fix. (4) `onPop` keeps a stale Home `error`, which can show under RECONNECTING after browser Forward. (5) Test strength: recovery-ux.spec.ts's Enter/Space check under the overlay can't fail on its own (focus is on `<body>`); focus PASS before the drop. server-ended.spec.ts:160 reuses `spawnPort(6)` with :94, which clashes if e2e ever runs in parallel. | todo |
 | C24 | client | S | Small text at inner 1280x600, from the PR 5 ux re-check: the in-match "Rules & keywords · Fullscreen · Forfeit" links render at 8 px, PR 4's PLAYTEST label at 7.3 px and the Home links at 10.7 px. Also: the RESTARTED notice leaves "one." alone on its last line, and og.jpg could use a 40-60 px left margin (the wordmark sits 8 px from the edge, which an iMessage crop touches). | todo |
+| C25 | client | S | The match inspect panel is hover-only: a player can't pin a card to read it while moving the mouse to the board, and touch-laptop users can't open it at all. Click (or tap) to pin, click again or Esc to release. From the PR 6 final ux check. | todo |
+| C26 | client | S | The back row slides about 70 px over about 300 ms at match start and again about 500 ms after some state updates, so the unit under a parked cursor changes and the inspect panel switches cards on its own. Check whether that slide is intended; if not, remove it. Found by qa-engineer while fixing a PR 6 test flake (the tests now read the panel in one atomic snapshot). | todo |
 | E5 | engine | S | engine.ts:104 seeds with `Math.random` when no seed is passed, a gap against invariant 1 (determinism). Require a seed, or move the default to the server. Found in the demo design challenge. | todo |
 | E6 | engine | S | Null-9 and Puppeteer text leaves out what seize does at the edges: the taken unit loses Poison, and moves to the other row when its own row is full (engine.ts:555-565). Afterimage does not say which unit it copies when two are tied for strongest (the engine takes the one that reached the board first, engine.ts:542), which decides the Echo’s row. Text only. Found by game-designer during PR 3. | todo |
 | E7 | engine | S | Two words for one thing: Drake-07 says "Summon a 3-power Echo" while Glitch Rat, Static Runner, Shard Bot and Gridlock Golem say "Summon a 3/2-power token". Lattice and Wire Hound show the Echo tooltip for "tokens"; a separate "Token" keyword would be more accurate. game-designer to pick one wording; re-check Drake’s wrap (its text box is 300 px). Found in the PR 3 ux check. | todo |
