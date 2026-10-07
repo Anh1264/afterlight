@@ -29,7 +29,7 @@ You decide what's unresolved. A hard-to-reverse decision gets an ADR in docs/dec
 Show Aiden: the player problem, the acceptance criteria, the design in 5 lines, the red-team's top 3 objections and how each was handled, and the size. If visuals help (a flow, a mockup, the screen today), publish them as an artifact. Wait for an explicit "go". Don't start building without it.
 
 ## 4. Branch
-`git switch -c feat/<id>-<slug>` from an up-to-date main. If another item is already in flight in this checkout, stop and ask Aiden to start this one in a new desktop session with the worktree box ticked (it lives in .claude/worktrees/), then run `npm ci` there. Tell every later agent which directory to work in.
+`git fetch origin && git switch -c feat/<id>-<slug> origin/main --no-track` (local main lags). If another item is already in flight in this checkout, stop and ask Aiden to start this one in a new desktop session with the worktree box ticked (it lives in .claude/worktrees/), then run `npm ci` there. Tell every later agent which directory to work in.
 
 ## 5. Tests first - qa-engineer
 Give it the spec path ONLY (not the design rationale). Output: failing tests and the criterion -> test table.
@@ -41,7 +41,7 @@ Gate: `npm run check` green and the new tests pass. If a dev fails twice, rerun 
 If a dev says a test is wrong, ask qa-engineer to rule on it. Devs never edit tests.
 
 ## 7. Verify - you, deterministically
-Run `npm run check` (and e2e once T1 lands). Client changes: run ux-reviewer on the affected flow at 1440x900 and 844x390. Any Blocker or Major issue goes back to step 6.
+Run `npm run check` and `npm run e2e`. Client changes: run ux-reviewer on the affected flow at 1440x900 and 844x390. Any Blocker or Major issue goes back to step 6.
 
 ## 8. Review - code-reviewer
 Give it the spec path and the branch. CHANGES -> send the blocking list back to the dev (step 6), then re-review. At most 2 review cycles; after that, escalate to Aiden.

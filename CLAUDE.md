@@ -21,7 +21,7 @@ Online Gwent-style card game: best of 3 rounds, 4 houses + Neutral, PvP by share
 ## Invariants (never break these; reviewers block on them)
 1. The engine is pure and deterministic: same (seed, decks, first, actions) gives the same events. No I/O, Date or Math.random inside shared/engine.
 2. The server is authoritative. Clients send intents (actions), never state. Every socket payload is validated before use (backlog P0-1).
-3. The client never re-derives a rule number. Totals, legality, targeting and constants come from shared/. (First Light +1 in Game.tsx is the cautionary tale.)
+3. The client never re-derives a rule number. Totals, legality, targeting and constants come from shared/. (Cautionary tale: First Light +1 was once hard-coded in Game.tsx.)
 4. The server never knows animation timings.
 5. Card rules text describes exactly what the engine does.
 6. Hidden information never leaves the server: opponent hand, deck order, RNG seed.
@@ -33,7 +33,7 @@ Online Gwent-style card game: best of 3 rounds, 4 houses + Neutral, PvP by share
 - Art: drop `client/public/art/<card-id>.png|webp|jpg` (transparent, about 800x1200). Placeholders until Aiden supplies art; never generate card art.
 
 ## Git and release
-- Never push `main`, never force-push (a hook blocks both). Work on `<type>/<id>-<slug>` branches (feat/, fix/, chore/, test/).
+- Never push `main`, never force-push (a hook blocks both). Work on `<type>/<id>-<slug>` branches (feat/, fix/, chore/, test/) cut from a freshly fetched `origin/main`; local `main` lags.
 - Finish with a PR: `gh pr create`. If `gh` isn't available, push the branch and give Aiden the GitHub compare URL.
 - Aiden merges. Merge to main = deploy.
 - Parallel work uses worktrees. In the desktop Code tab, start a new session (Cmd+N) on a new branch with the worktree box ticked; the app keeps it in `.claude/worktrees/`. Run `npm ci` inside a new worktree before testing.

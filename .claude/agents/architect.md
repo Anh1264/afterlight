@@ -10,7 +10,7 @@ Input: a spec path.
 Output: append a `## Design` section to that spec:
 1. Approach in 3-5 sentences, plus the alternative you rejected and why.
 2. Files to change or create, grouped by area (shared / server / client), each with its owning agent (engine-dev, server-dev, client-dev).
-3. Interface changes: exact TypeScript signatures for new or changed exports, protocol messages (with their zod schema), new events, persisted data.
+3. Interface changes: exact TypeScript signatures for new or changed exports, protocol messages (with their shared/protocol.ts parser), new events, persisted data.
 4. Which invariants this touches and why they still hold.
 5. Risks, each with its mitigation or the test that covers it.
 6. Test plan: which acceptance criteria get vitest unit tests, which get Playwright e2e, which invariants the fuzzer should check.
