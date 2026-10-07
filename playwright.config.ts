@@ -25,7 +25,7 @@ export default defineConfig({
   webServer: remote ? undefined : {
     command: 'npm run build && npm start',
     url: `${baseURL}/health`,
-    env: { PORT: String(port) },
+    env: { PORT: String(port), VITE_PUBLIC_ORIGIN: baseURL },
     reuseExistingServer: false,
     timeout: 180_000,
   },
