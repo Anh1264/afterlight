@@ -42,7 +42,7 @@ Online Gwent-style card game: best of 3 rounds, 4 houses + Neutral, PvP by share
 - Main session = orchestrator: routes work, runs gates, talks to Aiden; writes no production code while a pipeline runs. Only it commits or pushes.
 - Subagents return conclusions with file:line in their agent file's return format, never file contents or raw logs.
 - Devs (engine-, server-, client-dev) never edit qa-engineer's tests. A dev who disputes one names the assertion and reason, then stops; qa-engineer rules.
-- Models: Sonnet writes all production code (the three devs, at xhigh effort). Opus thinks, tests, verifies and oversees (product, architect, red-team, qa, reviewers). Never hand a coding task to Opus.
+- Models: Sonnet writes all code, production and tests (engine-, server-, client-dev and qa-engineer, at xhigh effort). Opus thinks, verifies and oversees (product-strategist, architect, red-team, game-designer, code-reviewer, ux-reviewer). Never hand a coding task to Opus.
 - Parallel devs: tasks whose files don't overlap run as separate dev instances at once, each given these rules, its slice and its working directory.
 - Escalation: a dev fails the gate twice on a task -> architect root-causes it and writes a fix plan with file:line -> a fresh dev of the same type implements it -> fails again -> stop and report to Aiden with the failing output.
 - Sizing: S (a bug, or <~50 lines in one area, no protocol/data change) -> /bug. M (feature in 1-2 areas) -> /ship. L (protocol, persistence, effect system, or 3 areas) -> split into M; the epic gets spec + design + /debate.
