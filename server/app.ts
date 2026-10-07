@@ -113,7 +113,7 @@ export function createGameServer(opts: ServerOptions = {}): GameServer {
   };
 
   const app = express();
-  const health = (): HealthJson => ({ ok: true, rooms: rooms.size, uptimeS: Math.round((Date.now() - bootedAt) / 1000) });
+  const health = (): HealthJson => ({ ok: true, rooms: rooms.size, uptimeS: Math.floor((Date.now() - bootedAt) / 1000) });
   app.get('/health', (_req, res) => { res.json(health()); });
   if (distDir && fs.existsSync(distDir)) {
     const dist = distDir;
