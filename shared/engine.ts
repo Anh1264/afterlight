@@ -289,6 +289,8 @@ export function targetSpecFor(g: BoardLike, p: PIdx, eff: EffId | undefined): Ta
     case 'sacburn': return ally(() => true, 0, 1, 'You may Sacrifice an allied unit to Burn the strongest enemy');
     case 'sacdraw': return ally(u => u.power <= 3, 0, 1, 'You may Sacrifice a unit with 3 or less power to draw 2');
     case 'rowburn': return opp.units.length ? { kind: 'row', side: 'enemy', prompt: `Choose an enemy row: Burn ${n1} to every unit there` } : { kind: 'none' };
+    // cultist:M:K, M = max power of the Sacrifice or 'any' (no cap); the bare legacy 'cultist' falls through to the second switch
+    case 'cultist': if (a1) return ally(u => a1 === 'any' || u.power <= n1, 0, 1, a1 === 'any' ? 'You may Sacrifice an allied unit' : `You may Sacrifice an allied unit with ${n1} or less power`); break;
   }
   switch (eff) {
     case 'poison1': return enemy(u => !u.poison, 1, 'Poison an enemy unit');
@@ -446,6 +448,17 @@ function applyEffect(g: GameState, p: PIdx, eff: EffId | undefined, self: Unit |
     } break;
     case 'seize': { seize(g, p, ts[0], ev); return; }
     case 'duellow': { if (self && ts[0]) duel(g, self.uid, ts[0], ev); return; }
+    case 'cultist': if (a1) {
+      for (const t of ts) {
+        const u = get(t);
+        if (!u || !self) continue;
+        const n = u.power + n2;
+        ev.push({ t: 'sacrifice', uid: t, by: self.uid });
+        removeUnit(g, t, ev, true);
+        gain(self, n, 'sacrifice', ev);
+      }
+      return;
+    } break;
   }
   switch (eff) {
     case 'poison1': case 'poison2': case 'poison3':

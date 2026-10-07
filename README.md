@@ -65,7 +65,7 @@ Each side has a **Front** row and a **Back** row, with up to 6 units in each. An
 
 ## Cards
 
-108 cards: 24 for each house and 12 Neutral.
+149 cards: Coven 34, Order 33, Ember 32, Echo 33 and Neutral 17.
 
 ### The Coven: Poison & Grow
 
@@ -79,12 +79,17 @@ Poison drains enemy units every turn they stay in; Grow builds yours. Wins long 
 | Grandmother Rot *(the mire hag)* | Legend | Unit | 4 | Deploy: Poison every enemy unit with 4 or less power in a row. |
 | Hollow Bloom *(the greedy flower)* | Legend | Unit | 5 | Grow. Deploy: Your other Grow units gain 2. |
 | The Elder Tree *(the first root)* | Legend | Unit | 6 | Grow. Deploy: Every Poisoned enemy unit loses 1. Your other Grow units gain 1. |
+| The Bottomless *(the maw below)* | Legend | Unit | 4 | Deploy: You may Sacrifice another allied unit; this gains its power +3. |
+| Gulletmaw *(the drowned jaw)* | Legend | Unit | 4 | Deploy: A Poisoned enemy unit loses 5 and this gains 5. |
 | Mother of Thorns | Rare | Unit | 4 | Grow. Deploy: Give up to 2 other allied units Grow. |
 | Plague Doctor | Rare | Unit | 2 | Deploy: Poison 2 enemy units. |
 | Swamp Colossus | Rare | Unit | 10 | Deploy: Poison this unit. |
 | Bog Oracle | Rare | Unit | 2 | Deploy: Draw a card. |
 | Venom Spitter | Rare | Unit | 4 | Deploy: An enemy unit loses 1 for each Poisoned enemy unit. |
 | Seed Keeper | Rare | Unit | 2 | Grow. Last Words: Summon a 4-power Sapling in this row. |
+| Marsh Lurker | Rare | Unit | 4 | Deploy: A Poisoned enemy unit loses 3 and this gains 3. |
+| Gut Hag | Rare | Unit | 3 | Deploy: You may Sacrifice another allied unit with 4 or less power; this gains its power +3. Last Words: Summon a 3-power Husk in this row. |
+| Bog Widow | Rare | Unit | 5 | Resolve: Every Poisoned enemy unit loses 2. |
 | Thornling | Common | Unit | 2 | Grow. |
 | Blight Moth | Common | Unit | 2 | Deploy: Poison an enemy unit. |
 | Bog Brute | Common | Unit | 4 | — |
@@ -97,6 +102,11 @@ Poison drains enemy units every turn they stay in; Grow builds yours. Wins long 
 | Hex Doll | Common | Unit | 2 | Deploy: Poison an enemy unit. Last Words: Poison a random enemy unit. |
 | Gravecap | Common | Unit | 3 | Last Words: Your other units in this row gain 2. |
 | Overgrowth | Common | Special | — | Your Grow units gain 2. |
+| Brood Sac | Common | Unit | 1 | Grow. Last Words: Summon two 2-power Grubs in this row. |
+| Husk Beetle | Common | Unit | 3 | Last Words: Summon a 3-power Husk in this row. |
+| Pit Maw | Common | Unit | 2 | Deploy: You may Sacrifice another allied unit with 4 or less power; this gains its power +3. |
+| Bog Bloater | Common | Unit | 7 | Deploy: Poison this unit. |
+| Bramblehide | Common | Unit | 3 | Grow. Shield. |
 
 ### The Order: Shield, Guard & Rally
 
@@ -110,12 +120,17 @@ A tall Front row that removal can’t crack. Shield soaks hits, Guard hides your
 | Captain Ilse *(the banner)* | Legend | Unit | 5 | Rally 2. Resolve: Give every unit in your Front row Shield. |
 | Brother Aurel *(the lantern)* | Legend | Unit | 5 | Deploy: Give Shield to up to 2 allied units. |
 | High Marshal Odric *(the iron wall)* | Legend | Unit | 6 | Guard. Deploy: Your other units gain 1. Resolve: They also gain Shield. |
+| The Bellwarden *(the muster bell)* | Legend | Unit | 1 | Deploy: Your other units gain 2. |
+| Ser Brannoc *(the challenger)* | Legend | Unit | 5 | Shield. Deploy: Duel an enemy unit with 5 or less power. |
 | Inquisitor | Rare | Unit | 4 | Deploy: Silence an enemy unit. |
 | Field Medic | Rare | Unit | 4 | Deploy: Give another allied unit Shield and +2. |
 | Standard Bearer | Rare | Unit | 5 | Rally 3. Other units in this row gain 3. |
 | Siege Ballista | Rare | Unit | 5 | Deploy: Burn 3. |
 | Paladin | Rare | Unit | 6 | Shield. Last Words: A random allied unit gains 3. |
 | Quartermaster | Rare | Unit | 2 | Deploy: Draw a card. |
+| Arbalest Line | Rare | Unit | 4 | Deploy: Burn 1 to every enemy unit in a row. |
+| Tower Warden | Rare | Unit | 7 | Guard. |
+| Bastion | Rare | Special | — | Give Shield to up to 3 allied units. |
 | Shieldbearer | Common | Unit | 5 | Guard. Shield. |
 | Squire | Common | Unit | 4 | Rally 2. Other units in this row gain 2. |
 | Lancer | Common | Unit | 6 | — |
@@ -128,6 +143,10 @@ A tall Front row that removal can’t crack. Shield soaks hits, Guard hides your
 | Militia | Common | Unit | 3 | Last Words: Summon a 2-power Recruit in this row. |
 | Archer | Common | Unit | 3 | Deploy: Burn 1 to up to 2 enemy units. |
 | Fortify | Common | Special | — | Boost all your Back-row units by 2. |
+| Conscript | Common | Unit | 3 | Rally 1. Other units in this row gain 1. |
+| War Drummer | Common | Unit | 1 | Deploy: Your other units gain 1. |
+| Drill Sergeant | Common | Unit | 3 | Echo 2. Summon a 2-power Recruit in your other row. |
+| Gate Warden | Common | Unit | 3 | Guard. Last Words: Summon a 3-power Recruit in this row. |
 
 ### The Ember: Burn & Sacrifice
 
@@ -141,12 +160,15 @@ Burn removes their best unit; Sacrifice turns small units into big ones. Wins sh
 | Matron Cinder *(the ash widow)* | Legend | Unit | 4 | Deploy: Burn 2 to up to 2 enemy units. |
 | Gorehorn *(the stampede)* | Legend | Unit | 10 | Deploy: Every other unit in this row loses 2. |
 | Azhar *(the burning crown)* | Legend | Unit | 5 | Deploy: Destroy an enemy unit with 6 or less power. |
+| Sulka *(the cinder bride)* | Legend | Unit | 4 | Deploy: Every enemy unit with 3 or less power loses 3. |
 | Demon Butcher | Rare | Unit | 5 | Deploy: You may Sacrifice another allied unit. Burn the strongest enemy unit by its power. |
 | Flame Warden | Rare | Unit | 5 | Deploy: Burn 1 to every enemy unit in a row. |
 | Infernal Hound | Rare | Unit | 7 | Resolve: Burn 4. |
 | Brand Priest | Rare | Unit | 2 | Deploy: You may Sacrifice a unit with 3 or less power. If you do, draw 2 cards. |
 | Magma Titan | Rare | Unit | 11 | Deploy: Your other units lose 1. |
 | Phoenix Whelp | Rare | Unit | 4 | Last Words: Summon a 5-power Phoenix in this row. |
+| Ember Storm | Rare | Special | — | Burn 2 to up to 3 enemy units. |
+| Ember Wraith | Rare | Unit | 3 | Last Words: Burn 4 to a random enemy unit. |
 | Cinder Imp | Common | Unit | 3 | Deploy: Burn 2. |
 | Pyre Hound | Common | Unit | 6 | — |
 | Ash Cultist | Common | Unit | 3 | Deploy: You may Sacrifice a unit with 3 or less power; gain its power +2. |
@@ -159,6 +181,11 @@ Burn removes their best unit; Sacrifice turns small units into big ones. Wins sh
 | Acolyte | Common | Unit | 2 | Last Words: A random allied unit gains 3. |
 | Pyromancer | Common | Unit | 3 | Deploy: Burn 3 to an enemy unit with 4 or less power. |
 | Fireball | Common | Special | — | Burn 4. |
+| Spark Flinger | Common | Unit | 2 | Deploy: Burn 1 to up to 3 enemy units. |
+| Cinder Reaper | Common | Unit | 3 | Deploy: Destroy an enemy unit with 3 or less power. |
+| Torchbearer | Common | Unit | 5 | Resolve: Burn 1 to up to 3 enemy units. |
+| Furnace Brute | Common | Unit | 8 | Deploy: Your other units lose 1. |
+| Ash Lancer | Common | Unit | 4 | Deploy: Burn 2 to the strongest enemy unit. |
 
 ### The Echo: Echo & Disrupt
 
@@ -172,12 +199,17 @@ Floods both rows with tokens, then steals and shoves enemy units. Too wide to Bu
 | Mirrorjack *(the copycat)* | Legend | Unit | 3 | Deploy: Choose an enemy unit. If it has more power, this becomes its power. |
 | Lattice *(the swarm mother)* | Legend | Unit | 4 | Deploy: Your tokens gain 2. |
 | Oracle Prime *(the all-seeing)* | Legend | Unit | 4 | Deploy: Draw a card. Resolve: Draw 2 instead. |
+| Facet Queen *(the thousand faces)* | Legend | Unit | 4 | Deploy: Choose another allied unit with 10 or less power. Summon an Echo with its power in its other row. |
 | Phase Stalker | Rare | Unit | 5 | Deploy: Move an enemy unit to its other row; it loses 3. |
 | Signal Jammer | Rare | Unit | 3 | Deploy: Silence an enemy unit. |
 | Replicator | Rare | Unit | 4 | Deploy: Choose another allied unit with 5 or less power. Summon an Echo with its power in its other row. |
 | Data Wraith | Rare | Unit | 3 | Deploy: Draw a card. |
 | Gridlock Golem | Rare | Unit | 6 | Echo 3. Summon a 3-power token in your other row. |
 | Puppeteer | Rare | Unit | 4 | Deploy: Take control of an enemy unit with 2 or less power. |
+| Looking Glass | Rare | Unit | 1 | Deploy: Choose an enemy unit. If it has more power, this becomes its power. |
+| Echo Lens | Rare | Unit | 3 | Deploy: Summon an Echo with the power of your strongest unit (this one counts; if tied, the one that reached the board first) in that unit's other row. |
+| Signal Tower | Rare | Unit | 5 | Resolve: Summon a 4-power Echo in your other row. |
+| Amplify | Rare | Special | — | Your tokens gain 2. |
 | Glitch Rat | Common | Unit | 2 | Echo 3. Summon a 3-power token in your other row. |
 | Static Runner | Common | Unit | 5 | Echo 2. Summon a 2-power token in your other row. |
 | Relay Drone | Common | Unit | 3 | Deploy: Move an enemy unit to its other row; it loses 2. |
@@ -190,6 +222,10 @@ Floods both rows with tokens, then steals and shoves enemy units. Too wide to Bu
 | Hacker | Common | Unit | 3 | Deploy: Remove Guard and Shield from an enemy unit. |
 | Wire Hound | Common | Unit | 5 | Deploy: Your tokens gain 1. |
 | Static Burst | Common | Special | — | Every enemy unit with 2 or less power loses 2. |
+| Mirror Mote | Common | Unit | 2 | Deploy: Choose another allied unit with 4 or less power. Summon an Echo with its power in its other row. |
+| Reroute | Common | Special | — | Move an enemy unit to its other row; it loses 3. |
+| Decoy Drone | Common | Unit | 2 | Guard. Echo 2. Summon a 2-power token in your other row. |
+| Fork Runner | Common | Unit | 4 | Echo 3. Summon a 3-power token in your other row. |
 
 ### Neutral
 
@@ -203,9 +239,14 @@ Sellswords, wanderers and relics. Neutral cards can go in any house’s deck.
 | Mercenary Captain | Rare | Unit | 5 | Rally 2. Other units in this row gain 2. |
 | Wayfarer Sage | Rare | Unit | 2 | Deploy: Draw a card. |
 | Iron Golem | Rare | Unit | 8 | Shield. |
+| Rockslide | Rare | Special | — | Burn 2 to every enemy unit in a row. |
+| Executioner | Rare | Unit | 4 | Deploy: Destroy an enemy unit with 4 or less power. |
 | Sellsword | Common | Unit | 6 | — |
 | Scout | Common | Unit | 4 | Deploy: An enemy unit loses 1. |
 | Veteran | Common | Unit | 4 | Shield. |
 | Apothecary | Common | Unit | 2 | Deploy: Boost another allied unit by 3. |
 | Brawler | Common | Unit | 4 | Deploy: Duel an enemy unit with 4 or less power. |
 | Second Wind | Common | Special | — | Boost an allied unit by 4. |
+| Lamplighter | Common | Unit | 3 | Resolve: Boost another allied unit by 4. |
+| Tinker | Common | Unit | 3 | Deploy: Give another allied unit Shield. |
+| Scrap Golem | Common | Unit | 4 | Last Words: Summon a 2-power Scrap in this row. |
