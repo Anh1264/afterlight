@@ -9,14 +9,15 @@ Spec and design: docs/specs/demo-mvp.md. Feature PRs don't edit this file; the o
 | PR | Items | Status |
 | --- | --- | --- |
 | 1 Test gates | T1, T4, T2 | done ([#1](https://github.com/Anh1264/afterlight/pull/1), merged Oct 7); Railway's Wait for CI is Aiden's switch |
-| 2 Server hardening | P0-1, N4, P0-4, DM-2, DM-6, DM-8 | spec |
+| 2a Server hardening | P0-1, N4, DM-2, DM-8 | spec (design challenge done Oct 6) |
+| 2b Abuse limits and logs | P0-4, DM-6 | spec |
 | 3 Bot Round 1 and card text | DM-1, DM-3 | spec |
-| 4 Truth on screen and the demo surface | P0-3, DM-4 | spec |
+| 4 Truth on screen and the demo surface | P0-3, DM-4 | build (review: CHANGES, fixes in progress) |
 | 5 Phones, link preview and recovery | DM-5, DM-7, C4 | spec |
 
 | ID | Area | Size | Item | Status |
 | --- | --- | --- | --- | --- |
-| DM-1 | bot | S | The bot wins Round 1 against an immediate pass in at least 90% of 2,000 seeds (it concedes 55.8% today), and judges who is ahead with the engine's totals, First Light included (bot.ts uses raw `score()`). | spec |
+| DM-1 | bot | S | The bot wins Round 1 against an immediate pass in at least 98% of 2,000 seeds (85% when the human plays their strongest card first) (it concedes 55.8% today), and judges who is ahead with the engine's totals, First Light included (bot.ts uses raw `score()`). | spec |
 | DM-2 | server | S | No turn clock in bot matches: today a 60 s timeout passes the whole round while a newcomer reads their hand. Idle bot matches end after 15 minutes instead. | spec |
 | DM-3 | engine | S | Card text matches the engine for Drake-07 and Lattice, both Legends in the Echo starter. Text only, plus their README rows. | spec |
 | DM-4 | client | M | Demo surface: Play vs Bot is the only home action (PvP at `/?pvp=1`), deck builder hidden, no ART PENDING, PLAYTEST label, How to play on the first click, Give feedback link, rules numbers from shared constants. | spec |
@@ -75,6 +76,8 @@ Spec and design: docs/specs/demo-mvp.md. Feature PRs don't edit this file; the o
 | C6 | client | S | Client hygiene: remove `ds.shown!` non-null assertions, replace the native `confirm()` forfeit dialog, clean up per-room `al:t:<code>` token keys that pile up in localStorage. | todo |
 | C7 | client | M | Accessibility: keyboard play, focus states, ARIA labels, and houses told apart by more than colour. | todo |
 | C8 | client | S | The `.game` root is keyed on the shake counter (Game.tsx:260), so every hit of 4 or more remounts the whole board: framer-motion state resets and the hand's entry animation replays. Shake a wrapper or use an animation instead of a key change. Found in the PR 1 review. | todo |
+| C9 | client | S | Rules numbers still hard-coded outside PR 4's files: Gallery.tsx:7 and :19 ("MAX 1/2/3", "Legend ×1, Rare ×2, Common ×3") should read `DECK_RULES`, and Game.tsx "WAITING 60s" repeats the server's drop grace (PvP only). Found in the PR 4 review. | todo |
+| E5 | engine | S | engine.ts:104 seeds with `Math.random` when no seed is passed, a gap against invariant 1 (determinism). Require a seed, or move the default to the server. Found in the demo design challenge. | todo |
 | O5 | ops | M | Staging environment: a Railway environment that deploys from a `staging` branch. Today production is the only place the full stack runs. | todo |
 | O6 | ops | S | Version releases: package.json still says 0.1.0 and there are no git tags. Tag each deploy (pairs with the build SHA in O3). | todo |
 | O7 | ops | S | Bump `concurrently` (2 critical audit issues in `shell-quote`, dev-only). | todo |

@@ -19,7 +19,7 @@ Invariants: the server stays authoritative (2), hidden information stays on the 
 
 ## Decision
 Option 1, in shared/protocol.ts:
-- `GameMsg.ended?: 'error' | 'idle'`. It is set only on the last message of a match the server ended itself. The room is deleted right after. Events are `[]`, and the view comes from `viewFor()`.
+- `GameMsg.ended?: 'error' | 'idle'`. It is set only on the last message of a match the server ended itself. The room is deleted right after. Events are `[]`, and the view comes from `viewFor()`, or the seat's last sent view if that throws.
 - `HandshakeAuth { device?: 'phone' | 'tablet' | 'desktop' }`, sent with `io({ auth })`. The server reads it with `parseDevice()`. Anything else becomes `'unknown'`. It is used only for logging and never changes behaviour, so a lie costs nothing.
 
 What an old client does:
