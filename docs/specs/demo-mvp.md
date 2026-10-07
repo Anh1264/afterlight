@@ -380,6 +380,23 @@ Architect, Tue 2026-10-06. Designed against PR 1 as built (worktree `t1-test-gat
 - **C12 joins the demo as a sixth, small client PR (`fix/C12-readable-inspect`).** The PR 4 ux pass set the condition "fix if a card’s text can’t be read on hover", and the PR 3 ux check measured it: in a match, the inspect panel (the only place to read a card) renders rules text at 5.7 px and keyword help at 9 px at 1366x650.
   - Acceptance: at inner 1366x650, the inspected card’s rules text and keyword help render at 12 CSS px or more, nothing in the right column overlaps, and 1440x900 is no worse.
   - It branches from PR 4’s commit and merges main after PR 4. It touches Game.tsx’s inspect panel and styles.css only.
+- **PR 6, after code review cycle 1.** At 17 px, multi-keyword cards overflow `.inspect`’s 540 px clip: High Marshal Odric overflows by about 148 px, and Captain Ilse, an ORDER starter card, by 2 lines.
+  - Fix: the inspect panel drops the art thumbnail and shows the current power beside the card’s name. The art stays on the card in hand and on the board. Card.tsx’s `CardTextBody` extraction is accepted, so the rules rendering exists once.
+  - Test: every hovered card is checked for size, clipping and overlap, and a PvP match with tall custom decks guarantees multi-keyword cards.
+- **PR 5, after code review cycle 1.**
+  - **The lost-match rule compares server boot times**, not message times. Railway starts the new server and waits for `/health` before stopping the old one, so a deploy mid-match would otherwise read ENDED instead of the restart apology. The new contract:
+    - `bootAt(uptimeS, now)`;
+    - `lostMatch(seenBootAt, nowBootAt)`, which is restarted iff both are known and `nowBootAt - seenBootAt > 5000` ms;
+    - App fetches `/health` on every connect and stamps the boot time into `lastSeen`.
+    - `uptimeS` is floored on the server (2a), so it never exceeds the real uptime.
+  - **Recovery dead-ends fixed:**
+    - a socket refused at load still retries;
+    - an OFFLINE click on a socket that isn’t active reconnects it;
+    - `pendingStart` is cleared by a manual start, back/forward or the gallery;
+    - a late lost-match message can’t outlive the next match.
+  - **The phone screen** uses `align-content: safe center`, checked at 667x375.
+  - **og origin:** a trailing slash is trimmed and an empty value is treated as unset. A Railway build that resolves no origin prints a loud build warning; it does not fail, so a deploy is never blocked by a missing preview URL. Check after deploy as already planned.
+  - **Merge order:** PR 5 merges after 2b, because its refusal e2e needs 2b, and CI must be green.
 
 ### Approach
 - **PR 2** ships as 2a (crash-proofing, seats, DM-2, DM-8) and then 2b (abuse limits, funnel log, `/health` counters).
