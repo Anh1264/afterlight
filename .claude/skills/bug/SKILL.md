@@ -9,7 +9,8 @@ Target for an S bug: about 45 minutes and 10M tokens end to end. Give Aiden one 
 
 0. Session: this must be a fresh worktree session with no other item in it (CLAUDE.md "Team"). If it isn't, stop and ask Aiden to start one.
 1. Triage (you). Restate the bug as expected vs actual, with exact repro steps, and find the area (shared / server / client). Size it (CLAUDE.md "Sizing") and say why in one line:
-   - Unknown cause -> run one capped investigation first (the area's dev, or architect for sync, reconnection or determinism): cause with file:line, then size.
+   - First read the failing line and what it calls, and name a hypothesis; pass it to the dev.
+   - Still unknown -> run one capped investigation first (the area's dev, or architect for sync, reconnection or determinism): cause with file:line, then size.
    - M or L -> stop and switch to /ship.
    - S -> continue. Add it to docs/backlog.md if it isn't there.
 2. Branch: `fix/<id>-<slug>` (CLAUDE.md "Git").
@@ -18,7 +19,7 @@ Target for an S bug: about 45 minutes and 10M tokens end to end. Give Aiden one 
    2. State the cause in 1-3 sentences with file:line, and check it explains every symptom.
    3. Fix, then grep for the same mistake elsewhere: fix it if it's in the same area and S, otherwise list it.
    4. Gate: `npm run check` green, plus the affected e2e specs (not the full suite).
-   It stops and reports if the fix reaches an L surface or outgrows S. Failures follow the CLAUDE.md escalation rule.
+   Cap: 15 minutes. Proof: `--repeat-each 10` for a flake, no load testing unless the repro needs it. It stops and reports if the fix reaches an L surface or outgrows S. Failures follow the CLAUDE.md escalation rule.
 4. Verify - you: re-run `npm run check` and the affected specs. Don't re-read files the dev already summarized.
 5. Review, in parallel (one message, two agents), both with `model: sonnet` and told "size S":
    - code-reviewer on the branch. It reverts the fix once to prove the repro test fails.

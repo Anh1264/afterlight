@@ -49,7 +49,10 @@ Online Gwent-style card game: best of 3 rounds, 4 houses + Neutral, PvP by share
 ## Team (.claude/agents) and pipelines (.claude/skills)
 - Main session = orchestrator: routes work, runs gates, talks to Aiden; writes no production code while a pipeline runs. Only it commits or pushes.
 - One item per session: each /bug or /ship runs in its own fresh worktree session, which ends once the PR is open. The orchestrator never carries two items, trusts agent returns, and re-runs only the gates.
-- A bug Aiden reports is triaged that turn: fixed in the current item if it's in scope, otherwise sized and handed back as a /bug to start in a new session. Never parked silently.
+- A failure Aiden reports gets its fix started in the same reply, never parked in the backlog first.
+- Before calling a cause "unknown", read the failing line and what it calls and name a hypothesis; only if that finds nothing is it an investigation.
+- S brief default: 15-minute cap; proof is `--repeat-each 10` plus one revert-the-fix check; no load testing unless the repro needs it.
+- Talk to Aiden tersely: facts, numbers, links, next action. No restating.
 - Subagents return conclusions with file:line in their agent file's return format, never file contents or raw logs.
 - Devs (engine-, server-, client-dev) never edit qa-engineer's tests. A dev who disputes one names the assertion and reason, then stops; qa-engineer rules. Exception: in /bug (S) the dev writes the repro test first, and the reviewer proves it fails without the fix.
 - Any agent that finds its work reaching an L surface (below), or outgrowing its size, stops and reports; the orchestrator re-sizes.
