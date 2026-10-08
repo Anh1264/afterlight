@@ -7,7 +7,8 @@ import {
 
 type Play = Extract<Action, { type: 'play' }>;
 
-function evaluate(g: GameState, me: PIdx): number {
+/** One-ply position score for `me`: board lead, card advantage, and lingering Grow/Poison/Shield value. */
+export function evaluate(g: GameState, me: PIdx): number {
   const p = g.players[me], o = g.players[me === 0 ? 1 : 0];
   const turnsLeft = o.passed ? 0 : Math.min(p.hand.length, o.hand.length);
   const k = turnsLeft * 0.8;
