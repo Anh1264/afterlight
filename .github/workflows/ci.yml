@@ -27,6 +27,21 @@ jobs:
       - run: npm run build
       - run: npm audit --omit=dev --audit-level=high
 
+  # Windows only runs the typecheck + tests: Git for Windows line endings
+  # broke tests there once (T7). Build, audit and e2e stay ubuntu-only. A separate job (not a
+  # matrix on `check`) keeps the existing `check` job name stable for required status checks.
+  check-windows:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+
   e2e:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest

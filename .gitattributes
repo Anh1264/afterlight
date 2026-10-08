@@ -1,0 +1,5 @@
+# Check text out with LF on every OS so tests and tools that match on '\n' behave the same on Windows.
+* text=auto eol=lf
+
+*.webp binary
+*.jpg binary

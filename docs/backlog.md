@@ -61,6 +61,8 @@ Spec and design: docs/specs/demo-mvp.md. Feature PRs don't edit this file; the o
 | T2 | ops | S | GitHub Actions on push/PR: check + e2e + `npm audit --omit=dev`. Railway deploys only after CI is green. | done (#1) |
 | T4 | tooling | S | Split shared/simulate.ts into a library and a CLI. Today importing `randomDeck` runs the full 700-match simulation at import time. Needed for T1's fuzz-lite. | done |
 | T5 | tooling | S | Install ESLint and enforce the CLAUDE.md conventions (no `any`, no non-null assertions, no empty `catch`). The code already has `eslint-disable` comments for a linter that isn't installed. | moved into AG-6 |
+| T7 | tooling | S | Reported by Aiden: on Windows `npm run check` failed 2 tests in shared/effects-registry.test.ts. Git for Windows checks out CRLF and `bodyOf()` searched engine.ts for `\n}\n`. Fix: `.gitattributes` `* text=auto eol=lf`, normalise `\r\n` after readFileSync, `check-windows` CI job. | in review |
+| T8 | tooling | S | From the T7 review: tests read source files with bare `readFileSync(..., 'utf8')` and split on `\n`. Add one `readSource()` test helper that normalises line endings, and a lint rule banning bare readFileSync in `*.test.ts`. Sibling: shared/cards-text.test.ts:124-127 splits README on `\n` and is CRLF-safe only by accident. Also: Aiden to make `check-windows` a required check in branch protection. | todo |
 
 ## P0 - before any promotion
 | ID | Area | Size | Item | Status |
