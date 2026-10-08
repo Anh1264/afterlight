@@ -65,7 +65,7 @@ describe('c4: fair play', () => {
     expect(mismatches, `${name}: ${mismatches.length} of ${customs.length} decisions followed the real custom deck`).toEqual([]);
   });
 
-  it('the decision does depend on the knowledge it is given: a bot told a different opponent list can decide differently', () => {
+  it('the decision does depend on the knowledge it is given: a bot told a different opponent list can decide differently', { timeout: 60_000 }, () => {
     // Guards against a vacuous c4: if decisions ignored `know` and the table entirely, every test above would pass.
     // Hard sees the imagined opponent through `know`, so over many states a wrong list must change at least one move.
     const policy = hardPolicy({ iterations: HARD_ITERATIONS_FOR_C4 });

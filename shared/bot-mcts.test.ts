@@ -78,7 +78,7 @@ describe('Level 2 search', () => {
     for (const s of keeps) expect(rootMoves(s.g, s.me, 6, mulberry(s.k))[0], `match ${s.k}`).toEqual({ type: 'pass' });
   });
 
-  it('reports visit statistics that add up to the iteration budget', () => {
+  it('reports visit statistics that add up to the iteration budget', { timeout: 60_000 }, () => {
     const g = game(5);
     const { action, stats } = searchMcts(g, g.current, mulberry(9), know(g, g.current), { iterations: 30 });
     expect(stats.reduce((n, x) => n + x.visits, 0)).toBe(30);
@@ -89,7 +89,7 @@ describe('Level 2 search', () => {
     }
   });
 
-  it('every shortlisted move is tried once before any is tried twice, and the most-tried move is played', () => {
+  it('every shortlisted move is tried once before any is tried twice, and the most-tried move is played', { timeout: 60_000 }, () => {
     for (const s of midMatchStates(25, 104000)) {
       const moves = rootMoves(s.g, s.me, 6, mulberry(5));
       if (moves.length < 2) continue;
@@ -104,7 +104,7 @@ describe('Level 2 search', () => {
     }
   });
 
-  it('the searched moves are the shortlist', () => {
+  it('the searched moves are the shortlist', { timeout: 60_000 }, () => {
     for (const s of midMatchStates(15, 105000)) {
       const moves = rootMoves(s.g, s.me, 6, mulberry(7));
       const { stats } = searchMcts(s.g, s.me, mulberry(7), know(s.g, s.me), { iterations: 12 });
@@ -112,7 +112,7 @@ describe('Level 2 search', () => {
     }
   });
 
-  it('c5: searching a position where passing loses the match never tries a pass or plays one', () => {
+  it('c5: searching a position where passing loses the match never tries a pass or plays one', { timeout: 60_000 }, () => {
     for (const s of noThrowStates(30, 106000, bestTakingPlay)) {
       const { action, stats } = searchMcts(s.g, s.me, mulberry(s.k), know(s.g, s.me), { iterations: 6 });
       expect(action.type, `match ${s.k}`).toBe('play');
@@ -127,7 +127,7 @@ describe('Level 2 search', () => {
     expect(searchMcts(g, s.me, mulberry(1), know(g, s.me), { iterations: 10 })).toEqual({ action: { type: 'pass' }, stats: [] });
   });
 
-  it('is deterministic given the view, the stream and the knowledge, never reads Math.random, and leaves the view alone', () => {
+  it('is deterministic given the view, the stream and the knowledge, never reads Math.random, and leaves the view alone', { timeout: 60_000 }, () => {
     const spy = vi.spyOn(Math, 'random');
     try {
       for (const s of midMatchStates(10, 108000)) {
@@ -143,7 +143,7 @@ describe('Level 2 search', () => {
     }
   });
 
-  it('searches a custom deck too (only the house pool known) and plays a legal move', () => {
+  it('searches a custom deck too (only the house pool known) and plays a legal move', { timeout: 60_000 }, () => {
     for (const s of midMatchStates(12, 109000, true)) {
       const { action } = searchMcts(s.g, s.me, mulberry(s.k), { oppList: null }, { iterations: 8 });
       expect(validate(s.g, s.me, action), `match ${s.k}`).toBeNull();

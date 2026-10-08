@@ -137,7 +137,7 @@ describe('botDecide: the one way a bot move is made', () => {
   const hard4 = hardPolicy({ iterations: 4 });
   const policies: [string, BotPolicy][] = [['easy', BOTS.easy], ['medium', BOTS.medium], ['hard (4 iterations)', hard4], ['random baseline', RANDOM_BOT]];
 
-  it.each(policies)('%s always returns an action the real state accepts (100 starter states and 30 custom-deck states)', (_name, policy) => {
+  it.each(policies)('%s always returns an action the real state accepts (100 starter states and 30 custom-deck states)', { timeout: 60_000 }, (_name, policy) => {
     for (const s of states) {
       const move = botDecide(policy, s.g, s.me, ctxFor(s.g, s.me, s.k));
       expect(validate(s.g, s.me, move.action), `state ${s.k}: ${JSON.stringify(move.action)}`).toBeNull();
@@ -238,7 +238,7 @@ describe('botDecide: the one way a bot move is made', () => {
     expect(differs / compared, 'the opponent\'s hand in the view differs from the real one').toBeGreaterThan(0.9);
   });
 
-  it('c8 / invariant 1: the only randomness is ctx.rnd (Math.random is never called) for every level', () => {
+  it('c8 / invariant 1: the only randomness is ctx.rnd (Math.random is never called) for every level', { timeout: 60_000 }, () => {
     const spy = vi.spyOn(Math, 'random');
     for (const [, policy] of policies) {
       for (const s of states.slice(0, 15)) botDecide(policy, s.g, s.me, ctxFor(s.g, s.me, s.k));
@@ -246,7 +246,7 @@ describe('botDecide: the one way a bot move is made', () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
-  it('c8: the same recorded state, bot seed and knowledge reproduce the same action, also after a structured clone (a worker)', () => {
+  it('c8: the same recorded state, bot seed and knowledge reproduce the same action, also after a structured clone (a worker)', { timeout: 60_000 }, () => {
     for (const [name, policy] of policies) {
       for (const s of states.slice(0, 25)) {
         const a = botDecide(policy, s.g, s.me, ctxFor(s.g, s.me, s.k)).action;

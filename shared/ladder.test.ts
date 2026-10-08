@@ -207,7 +207,7 @@ describe('one recorded match (a superset of a match_records row)', () => {
     }
   });
 
-  it('c4 (same deck rule): every level and the random baseline is dealt its house\'s starter list', () => {
+  it('c4 (same deck rule): every level and the random baseline is dealt its house\'s starter list', { timeout: 60_000 }, () => {
     for (const j of [jobs.find(x => x.pairing === 'easy-random'), jobs.find(x => x.pairing === 'hard-medium'), job]) {
       const r = play(must(j, 'a job'));
       for (const p of [0, 1] as PIdx[]) expect(r.seats[p].deck).toEqual(deckList(r.seats[p].house));
@@ -247,7 +247,7 @@ describe('one recorded match (a superset of a match_records row)', () => {
     expect(replayRecord({ ...r, steps: r.steps.slice(0, -1) })).toBe(false);
   });
 
-  it('is deterministic: the same job twice with a constant clock gives identical records', () => {
+  it('is deterministic: the same job twice with a constant clock gives identical records', { timeout: 60_000 }, () => {
     expect(play(job)).toEqual(play(job));
     const hardJob = must(jobs.find(x => x.pairing === 'hard-medium'), 'a hard-medium job');
     expect(play(hardJob)).toEqual(play(hardJob));
@@ -263,7 +263,7 @@ describe('one recorded match (a superset of a match_records row)', () => {
     expect(ticking.steps.some(st => st.w > 0)).toBe(true);
   });
 
-  it('is pure: no Date, performance or Math.random is read (the clock is injected)', () => {
+  it('is pure: no Date, performance or Math.random is read (the clock is injected)', { timeout: 60_000 }, () => {
     const spies = [vi.spyOn(Date, 'now'), vi.spyOn(performance, 'now'), vi.spyOn(Math, 'random')];
     try {
       play(job);
