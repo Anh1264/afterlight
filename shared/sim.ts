@@ -2,8 +2,10 @@
 import { ALL_HOUSES, CARDS, DECK_RULES, House, deckPool, validateDeck } from './cards';
 import { decide, candidatePlays } from './bot';
 import { Action, GameState, PIdx, applyAction, createGame } from './engine';
+import { mulberry } from './rng';
 
-export function mulberry(seed: number) { return () => { let t = (seed = (seed + 0x6d2b79f5) >>> 0); t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+// moved to rng.ts (BL-1); re-exported so existing callers keep importing it from here
+export { mulberry };
 
 /** A random legal deck, used to fuzz every card in the pool. */
 export function randomDeck(h: House, rnd: () => number): string[] {

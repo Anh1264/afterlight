@@ -1,11 +1,12 @@
 // Heuristic bot, ported from the balance simulator and extended to pick targets.
 import { CARDS } from './cards';
 import {
-  Action, GameState, PIdx, Row, TargetSpec, Unit, activeEffect, clone, doPlay, endTurn,
+  Action, GameState, PIdx, Row, TargetSpec, Unit, activeEffect, applyAction, clone, doPlay, endTurn,
   legalRows, score, targetSpecFor, totals, validate,
 } from './engine';
 
-type Play = Extract<Action, { type: 'play' }>;
+export type Play = Extract<Action, { type: 'play' }>;
+export interface ScoredPlay { v: number; play: Play }
 
 /** One-ply position score for `me`: board lead, card advantage, and lingering Grow/Poison/Shield value. */
 export function evaluate(g: GameState, me: PIdx): number {
@@ -66,27 +67,35 @@ export function candidatePlays(g: GameState, me: PIdx): Play[] {
   return out;
 }
 
-export function bestPlay(g: GameState, me: PIdx): { v: number; play: Play } | null {
+/** Every candidate play with bestPlay's score, best first; equal scores keep candidatePlays order (stable sort), so [0] is bestPlay's pick. */
+export function rankedPlays(g: GameState, me: PIdx): ScoredPlay[] {
   const base = evaluate(g, me);
   const oppPassed = g.players[me === 0 ? 1 : 0].passed;
-  let best: { v: number; play: Play } | null = null;
+  const out: ScoredPlay[] = [];
   for (const play of candidatePlays(g, me)) {
     const g2 = clone(g);
     try { doPlay(g2, me, play, []); endTurn(g2, me, []); } catch { continue; }
     let v = evaluate(g2, me) - base;
-    const def = CARDS[g.players[me].hand.find(c => c.uid === play.uid)!.cardId];
+    const inst = g.players[me].hand.find(c => c.uid === play.uid);
+    if (!inst) throw new Error('rankedPlays: a candidate play names a card that is not in hand');
+    const def = CARDS[inst.cardId];
     if (def.resolve && !oppPassed) v -= 2.5; // hold Resolve cards for after a pass
     if (def.tier === 'LEGEND' && g.round === 1) v -= 1.0;
-    if (!best || v > best.v) best = { v, play };
+    out.push({ v, play });
   }
-  return best;
+  return out.sort((x, y) => y.v - x.v);
+}
+
+export function bestPlay(g: GameState, me: PIdx): ScoredPlay | null {
+  return rankedPlays(g, me)[0] ?? null;
 }
 
 const other = (p: PIdx): PIdx => (p === 0 ? 1 : 0);
 
 export const R1_TAKE = { MAX_OPP_CARDS_ON_BOARD: 1, MAX_CARDS: 2, CARD_SLACK: 1 } as const;
 
-function lead(g: GameState, me: PIdx): number {
+/** My board total minus theirs. */
+export function lead(g: GameState, me: PIdx): number {
   const t = totals(g);
   return t[me] - t[other(me)];
 }
@@ -127,6 +136,19 @@ export function takeRoundCost(g: GameState, me: PIdx, max: number): { cards: num
     if (lead(cur, me) > 0) return { cards, first };
   }
   return null;
+}
+
+/** [pass, ...candidatePlays that validate]: the uniform-random bot's choice set. */
+export function legalActions(g: GameState, me: PIdx): Action[] {
+  return [{ type: 'pass' }, ...candidatePlays(g, me).filter(p => validate(g, me, p) === null)];
+}
+
+/** True when passing now ends the match with `me` losing (applyAction on a clone) and `me` has a legal play. Public information only. */
+export function passThrowsMatch(g: GameState, me: PIdx): boolean {
+  const after = clone(g);
+  if ('error' in applyAction(after, me, { type: 'pass' })) return false;
+  if (!after.over || after.winner !== other(me)) return false;
+  return candidatePlays(g, me).some(p => validate(g, me, p) === null);
 }
 
 export function decide(g: GameState, me: PIdx, rnd: () => number = Math.random): Action {
