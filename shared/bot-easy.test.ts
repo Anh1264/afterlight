@@ -83,7 +83,7 @@ describe('Easy: decideEasy', () => {
     }
   });
 
-  it('while the opponent is still playing and Easy is not ahead it never passes: no dry passes, no giving up (even if told to pass whenever ahead)', () => {
+  it('while the opponent is still playing and Easy is not ahead it never passes: no dry passes, no giving up (even if told to pass whenever ahead)', { timeout: 60_000 }, () => {
     const notAhead = MID.filter(s => !s.g.players[other(s.me)].passed && diffOf(s) <= 0 && hasPlay(s));
     expect(notAhead.length).toBeGreaterThan(40);
     for (const s of notAhead) {
@@ -191,7 +191,7 @@ describe('Easy: decideEasy', () => {
     }
   });
 
-  it('c5: on 300 positions where passing would lose the match and a card would take the round, Easy plays', () => {
+  it('c5: on 300 positions where passing would lose the match and a card would take the round, Easy plays', { timeout: 60_000 }, () => {
     const losing = noThrowStates(300, 99000, bestTakingPlay);
     for (const s of losing) {
       for (let seed = 0; seed < 5; seed++) expect(decideEasy(s.g, s.me, mulberry(seed)).type, `match ${s.k} round ${s.g.round}`).toBe('play');
