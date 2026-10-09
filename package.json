@@ -11,7 +11,9 @@
     "typecheck": "tsc --noEmit -p .",
     "check": "npm run -s typecheck && npm test",
     "sim": "tsx shared/simulate.ts",
-    "sim:bots": "tsx shared/simulate-bots.ts",
+    "ladder": "tsx scripts/ladder.ts",
+    "sim:bots": "tsx scripts/ladder.ts",
+    "bot-golden": "tsx scripts/bot-golden.ts",
     "e2e": "playwright test"
   },
   "engines": {

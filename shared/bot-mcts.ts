@@ -1,77 +1,72 @@
-// Level 2 bot: determinized Monte Carlo search (PIMC) with a UCB1 bandit over root moves.
+// Hard: determinized Monte Carlo search (PIMC) with a UCB1 bandit over root moves, run on the fair view.
 //
-// The bot cannot see the opponent's hand or either deck order, so it never searches the real state.
-// Each iteration it:
-//   1. determinizes: builds one plausible world consistent with what it can see
-//      (opponent hand + deck reshuffled together and re-dealt, own deck reshuffled, engine RNG reseeded);
+// The bot never searches the real state: the harness (bots.ts botDecide) hands it a view built by the shared
+// determinize, and every iteration here re-determinizes that view. Each iteration:
+//   1. determinizes: builds one plausible world consistent with what the bot may know
+//      (opponent hand + deck redealt from the cards it could hold, own deck reshuffled, engine RNG reseeded);
 //   2. picks a root move with UCB1 (try the most promising move, but keep exploring the others);
-//   3. plays that move, then rolls the match out to the end with the Level 1 greedy bot playing both seats;
+//   3. plays that move, then rolls the match out to the end with Medium (bot.ts decide) playing both seats;
 //   4. scores the result (win 1, draw 0.5, loss 0) and credits it to that root move.
 // The move with the most visits is played. Averaging over many sampled worlds is what lets it reason about
 // hidden cards and, above all, about when to pass.
 //
 // Known limitation (strategy fusion): every rollout sees one fully revealed world, so the bot assumes it
-// will "know" the hidden cards later in the line. ISMCTS is the fix if this ever shows up in play.
+// will "know" the hidden cards later in the line. The larger limit is that Medium plays both sides of every
+// imagined future. See docs/specs/bot-levels.md "Strategy fusion, and Hard's real limit".
 import { CARDS } from './cards';
 import { Action, GameState, PIdx, applyAction, clone, doPlay, endTurn, validate } from './engine';
-import { candidatePlays, decide, evaluate } from './bot';
+import { candidatePlays, decide, evaluate, passThrowsMatch } from './bot';
+import { DeckKnowledge, determinize } from './determinize';
 
 export interface MctsOptions {
   /** Rollouts per decision. Cost is roughly linear: ~5-8 ms per rollout on a laptop core. */
   iterations: number;
-  /** Root plays kept after one-ply pruning (pass and the greedy pick are always kept). */
+  /** Root plays kept after one-ply pruning (Medium's pick is always kept; so is pass, unless passing would throw the match). */
   topK: number;
   /** UCB1 exploration constant; rewards are in [0, 1]. */
   c: number;
 }
 
-export const MCTS_DEFAULTS: MctsOptions = { iterations: 160, topK: 6, c: 0.7 };
+/** Hard's algorithm version: bump whenever its golden decisions change (shared/__golden__/bot-levels.json). */
+export const MCTS_VERSION = 'mcts-1';
 
-const other = (p: PIdx): PIdx => (p === 0 ? 1 : 0);
+/** Applied default 4: the largest of 80/160/320 within 1.5 s p95 on a laptop core; BL-2 re-measures on Railway. */
+export const HARD_ITERATIONS = 160;
 
-function shuffleWith<T>(a: T[], rnd: () => number): T[] {
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(rnd() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-/** One plausible full state given only what `me` can see. Never reads the hidden order it replaces. */
-export function determinize(g: GameState, me: PIdx, rnd: () => number): GameState {
-  const s = clone(g);
-  const o = s.players[other(me)];
-  const pool = shuffleWith([...o.hand, ...o.deck], rnd);
-  o.hand = pool.slice(0, o.hand.length);
-  o.deck = pool.slice(o.hand.length);
-  shuffleWith(s.players[me].deck, rnd);
-  s.rng = Math.floor(rnd() * 2 ** 32) >>> 0;
-  return s;
-}
+export const MCTS_DEFAULTS: MctsOptions = { iterations: HARD_ITERATIONS, topK: 6, c: 0.7 };
 
 const key = (a: Action) => JSON.stringify(a);
 
-/** Root moves worth searching: pass, the greedy pick, and the best `topK` plays by one-ply evaluation. */
-export function rootMoves(g: GameState, me: PIdx, topK: number, rnd: () => number): Action[] {
-  const base = evaluate(g, me);
+/**
+ * Root moves worth searching, on the view: pass, Medium's pick and the best `topK` plays by one-ply evaluation.
+ * Pass is omitted when passing would end the match with `me` losing (passThrowsMatch), so Hard never throws a match.
+ */
+export function rootMoves(view: GameState, me: PIdx, topK: number, rnd: () => number): Action[] {
+  const base = evaluate(view, me);
   const scored: { a: Action; v: number }[] = [];
-  for (const play of candidatePlays(g, me)) {
-    if (validate(g, me, play) !== null) continue;
-    const g2 = clone(g);
+  for (const play of candidatePlays(view, me)) {
+    if (validate(view, me, play) !== null) continue;
+    const g2 = clone(view);
     doPlay(g2, me, play, []);
     endTurn(g2, me, []);
     scored.push({ a: play, v: evaluate(g2, me) - base });
   }
   scored.sort((x, y) => y.v - x.v);
-  const out: Action[] = [{ type: 'pass' }];
-  const seen = new Set(out.map(key));
-  const add = (a: Action) => { const k = key(a); if (!seen.has(k)) { seen.add(k); out.push(a); } };
-  add(decide(g, me, rnd));
+  const noPass = passThrowsMatch(view, me);
+  const out: Action[] = [];
+  const seen = new Set<string>();
+  const add = (a: Action) => {
+    if (a.type === 'pass' && noPass) return;
+    const k = key(a);
+    if (!seen.has(k)) { seen.add(k); out.push(a); }
+  };
+  add({ type: 'pass' });
+  add(decide(view, me, rnd));
   for (const s of scored.slice(0, topK)) add(s.a);
   return out;
 }
 
-/** Plays a determinized state to the end with the greedy bot on both seats; returns `me`'s reward. */
+/** Plays a determinized state to the end with Medium on both seats; returns `me`'s reward. */
 function rollout(s: GameState, me: PIdx, rnd: () => number): number {
   for (let i = 0; i < 400 && !s.over; i++) {
     const p = s.current;
@@ -84,13 +79,17 @@ function rollout(s: GameState, me: PIdx, rnd: () => number): number {
 
 export interface MctsStats { action: Action; visits: number; mean: number }
 
-/** Level 2 decision. Returns the chosen action plus per-move statistics (useful for debugging and teaching). */
+/**
+ * Hard's decision on the fair view: the chosen action plus per-move statistics (useful for debugging and teaching).
+ * `view` is already fair (bots.ts botDecide builds it); every iteration redeals the hidden cards with determinize(view, me, rnd, know).
+ * All randomness comes from `rnd`.
+ */
 export function searchMcts(
-  g: GameState, me: PIdx, rnd: () => number = Math.random, opts: Partial<MctsOptions> = {},
+  view: GameState, me: PIdx, rnd: () => number, know: DeckKnowledge, opts: Partial<MctsOptions> = {},
 ): { action: Action; stats: MctsStats[] } {
   const o: MctsOptions = { ...MCTS_DEFAULTS, ...opts };
-  if (!g.players[me].hand.length) return { action: { type: 'pass' }, stats: [] };
-  const moves = rootMoves(g, me, o.topK, rnd);
+  if (!view.players[me].hand.length) return { action: { type: 'pass' }, stats: [] };
+  const moves = rootMoves(view, me, o.topK, rnd);
   if (moves.length === 1) return { action: moves[0], stats: [{ action: moves[0], visits: 0, mean: 0 }] };
   const n = moves.map(() => 0), w = moves.map(() => 0);
   for (let it = 0; it < o.iterations; it++) {
@@ -104,7 +103,7 @@ export function searchMcts(
         if (u > best) { best = u; pick = i; }
       }
     }
-    const s = determinize(g, me, rnd);
+    const s = determinize(view, me, rnd, know);
     const r = applyAction(s, me, moves[pick]);
     if ('error' in r) throw new Error('searchMcts: illegal root move: ' + r.error);
     w[pick] += rollout(s, me, rnd);
@@ -116,10 +115,6 @@ export function searchMcts(
     if (stats[i].visits > stats[bi].visits || (stats[i].visits === stats[bi].visits && stats[i].mean > stats[bi].mean)) bi = i;
   }
   return { action: stats[bi].action, stats };
-}
-
-export function decideMcts(g: GameState, me: PIdx, rnd: () => number = Math.random, opts: Partial<MctsOptions> = {}): Action {
-  return searchMcts(g, me, rnd, opts).action;
 }
 
 /** Human-readable label for an action, for logs and the head-to-head report. */
